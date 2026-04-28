@@ -124,6 +124,7 @@ function App() {
   const [videoFile, setVideoFile] = useState(null);
   const [videoUrl, setVideoUrl] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisStatus, setAnalysisStatus] = useState("");
   const [result, setResult] = useState(null);
   const fileInputRef = useRef(null);
 
@@ -133,6 +134,7 @@ function App() {
       setVideoFile(file);
       setVideoUrl(URL.createObjectURL(file));
       setResult(null);
+      setAnalysisStatus("");
     }
   };
 
@@ -147,12 +149,14 @@ function App() {
       setVideoFile(file);
       setVideoUrl(URL.createObjectURL(file));
       setResult(null);
+      setAnalysisStatus("");
     }
   };
 
   const runAnalysis = async () => {
     if (!videoFile) return;
     setIsAnalyzing(true);
+    setAnalysisStatus("Uploading video to secure server...");
     setResult(null);
 
     try {
@@ -173,19 +177,32 @@ function App() {
       const data = await response.json();
       const expectedVideoUri = data.videoUri;
 
+      setAnalysisStatus("Generating facial landmarks (MediaPipe)...");
       await pollForAnalysis(expectedVideoUri);
     } catch (error) {
       console.error(error);
       setIsAnalyzing(false);
+      setAnalysisStatus("");
       alert("Analysis failed: " + error.message);
     }
   };
 
   const pollForAnalysis = async (videoUri) => {
     const startTime = Date.now();
-    const timeout = 90000;
+    const timeout = 300000; // 5 minutes
+
+    let iterations = 0;
 
     while (Date.now() - startTime < timeout) {
+      iterations++;
+      
+      // Update status message based on progress
+      if (iterations > 10) {
+        setAnalysisStatus("Gemini is performing deep forensic verification...");
+      } else if (iterations > 3) {
+        setAnalysisStatus("Analyzing kinetic jitter & temporal patterns...");
+      }
+
       const q = query(
         collection(db, "analyses"),
         where("video_reference", "==", videoUri)
@@ -196,6 +213,7 @@ function App() {
       if (!snapshot.empty) {
         const data = snapshot.docs[0].data();
         setIsAnalyzing(false);
+        setAnalysisStatus("");
         
         let analysisData = data.analysis;
         if (typeof analysisData === 'string') {
@@ -221,10 +239,11 @@ function App() {
         return;
       }
 
-      await new Promise(r => setTimeout(r, 3000));
+      await new Promise(r => setTimeout(r, 4000));
     }
 
     setIsAnalyzing(false);
+    setAnalysisStatus("");
     alert("Timed out waiting for results. Check Cloud Functions logs.");
   };
 
@@ -232,6 +251,7 @@ function App() {
     setVideoFile(null);
     setVideoUrl(null);
     setResult(null);
+    setAnalysisStatus("");
   };
 
   return (
@@ -335,6 +355,26 @@ function App() {
                     </div>
                   ) : 'Analyze Video'}
                 </button>
+              )}
+
+              {isAnalyzing && (
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  style={{ 
+                    marginTop: '1rem', 
+                    fontSize: '0.85rem', 
+                    color: 'var(--accent-color)',
+                    fontWeight: '500',
+                    textAlign: 'center',
+                    background: 'rgba(0,0,0,0.2)',
+                    padding: '8px',
+                    borderRadius: '8px',
+                    border: '1px dashed rgba(255,255,255,0.1)'
+                  }}
+                >
+                  {analysisStatus}
+                </motion.div>
               )}
             </div>
           )}
