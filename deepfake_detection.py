@@ -42,8 +42,8 @@ def load_landmarks_file(landmarks_path: str) -> str:
 def generate(video_path=None, landmarks_path=None):
   
   if not os.environ.get("GOOGLE_CLOUD_PROJECT_ID"):
-    raise ValueError("GOOGLE_CLOUD_PROJECT_ID environment variable must be set.")
-  
+    os.environ["GOOGLE_CLOUD_PROJECT_ID"] = "deepfake-detector-494710"
+    
   client = genai.Client(
       vertexai=True,
       project=os.environ.get("GOOGLE_CLOUD_PROJECT_ID"),
@@ -133,6 +133,7 @@ Analysis Framework:
     ),
   )
 
+  full_response = ""
   for chunk in client.models.generate_content_stream(
     model = model,
     contents = contents,
@@ -140,7 +141,10 @@ Analysis Framework:
     ):
     if not chunk.candidates or not chunk.candidates[0].content or not chunk.candidates[0].content.parts:
         continue
+    full_response += chunk.text
     print(chunk.text, end="")
+    
+  return full_response
 
 
 if __name__ == "__main__":

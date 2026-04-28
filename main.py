@@ -1,6 +1,8 @@
-from deepfake_detection import analyze_deepfake
+from deepfake_detection import generate
+from firebase_utils import initialize_firebase, upload_video_to_storage
 import json
 import sys
+import os
 
 
 def main():
@@ -14,12 +16,24 @@ def main():
     """
     
     # Example 1: Using JSON landmarks file
-    video_path = "video_0001.mp4"  # Replace with actual video path
-    landmarks_path = "video_0001_landmarks.json"
+    # We will use the download.mp4 and download_landmarks.json we downloaded
+    video_path = "download.mp4"  # Replace with actual video path if needed
+    landmarks_path = "download_landmarks.json"
+    
+    project_id = os.environ.get("GOOGLE_CLOUD_PROJECT_ID", "deepfake-detector-494710")
     
     try:
+        # Initialize Firebase and Upload Video to Cloud Storage Backend
+        print(f"Connecting to Firebase backend for project: {project_id}")
+        initialize_firebase(project_id)
+        
+        # Perform Video Upload to Firebase Storage
+        storage_path = upload_video_to_storage(video_path, bucket_folder="analyzed_videos")
+        
+        # After upload finishes, call Gemini to analyze the deepfake locally
+        print(f"Video backed up to Firebase at: {storage_path}")
         print("Starting deepfake analysis...")
-        results = analyze_deepfake(video_path, landmarks_path)
+        results = generate(video_path, landmarks_path)
         
         print("\n" + "="*50)
         print("ANALYSIS RESULTS")
