@@ -56,6 +56,7 @@ python sensor.py input.mp4 --verbose
 ```
 
 Prints:
+
 - Video FPS and total frame count
 - Processing progress (every 50 frames)
 - Final frame count with face detection
@@ -127,21 +128,22 @@ JSON array with one record per frame:
 
 ### Fields
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `frame` | int | 0-indexed frame number |
-| `time` | float | Timestamp in seconds (frame_id / fps) |
-| `face_detected` | bool | Whether a face was detected in this frame |
-| `chin` | [x, y, z] \| null | Normalized chin coordinates or null if no face |
-| `left_eye` | [x, y, z] \| null | Left iris center (averaged from 5 iris points) |
-| `right_eye` | [x, y, z] \| null | Right iris center (averaged from 5 iris points) |
-| `left_eyebrow` | [x, y, z] \| null | Left eyebrow corner |
-| `right_eyebrow` | [x, y, z] \| null | Right eyebrow corner |
-| `chin_velocity` | float \| null | (Optional) Chin movement speed in units/second |
+| Field           | Type              | Description                                     |
+| --------------- | ----------------- | ----------------------------------------------- |
+| `frame`         | int               | 0-indexed frame number                          |
+| `time`          | float             | Timestamp in seconds (frame_id / fps)           |
+| `face_detected` | bool              | Whether a face was detected in this frame       |
+| `chin`          | [x, y, z] \| null | Normalized chin coordinates or null if no face  |
+| `left_eye`      | [x, y, z] \| null | Left iris center (averaged from 5 iris points)  |
+| `right_eye`     | [x, y, z] \| null | Right iris center (averaged from 5 iris points) |
+| `left_eyebrow`  | [x, y, z] \| null | Left eyebrow corner                             |
+| `right_eyebrow` | [x, y, z] \| null | Right eyebrow corner                            |
+| `chin_velocity` | float \| null     | (Optional) Chin movement speed in units/second  |
 
 ### Coordinate System
 
 All coordinates are **normalized** (0.0–1.0):
+
 - `x`: left (0.0) to right (1.0)
 - `y`: top (0.0) to bottom (1.0)
 - `z`: depth estimate from the model (-1.0 to +1.0), where negative = farther from camera
@@ -150,18 +152,18 @@ All coordinates are **normalized** (0.0–1.0):
 
 The script extracts the following MediaPipe Face Mesh indices:
 
-| Landmark | Index(es) |
-|----------|-----------|
-| Chin | 152 |
-| Left Iris | 468, 469, 470, 471, 472 (averaged) |
-| Right Iris | 473, 474, 475, 476, 477 (averaged) |
-| Left Eyebrow | 70 |
-| Right Eyebrow | 300 |
+| Landmark      | Index(es)                          |
+| ------------- | ---------------------------------- |
+| Chin          | 152                                |
+| Left Iris     | 468, 469, 470, 471, 472 (averaged) |
+| Right Iris    | 473, 474, 475, 476, 477 (averaged) |
+| Left Eyebrow  | 70                                 |
+| Right Eyebrow | 300                                |
 
 ## Configuration Options
 
 ```
-usage: sensor.py [-h] [--model MODEL] [--output OUTPUT] 
+usage: sensor.py [-h] [--model MODEL] [--output OUTPUT]
                   [--include-velocity] [--smoothing-alpha ALPHA] [--verbose]
                   [input_video]
 
@@ -193,6 +195,7 @@ optional arguments:
 If the automatic model download fails due to network issues:
 
 1. Download manually:
+
    ```bash
    wget -O face_landmarker.task https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task
    ```
@@ -258,6 +261,7 @@ The script follows a modular, production-grade design:
 ### Why Temporal Continuity?
 
 Skipping frames without faces breaks time-series analysis. By recording `face_detected=false`, downstream models can:
+
 - Interpolate missing landmarks
 - Detect blink events (rapid face loss)
 - Maintain frame-to-frame correspondence
@@ -265,6 +269,7 @@ Skipping frames without faces breaks time-series analysis. By recording `face_de
 ### Why Iris Averaging?
 
 MediaPipe outputs 5 iris points (perimeter). Averaging them:
+
 - Reduces noise from individual point jitter
 - Gives a stable pupil center
 - Works better for velocity analysis
@@ -272,6 +277,7 @@ MediaPipe outputs 5 iris points (perimeter). Averaging them:
 ### Why EMA Smoothing?
 
 MediaPipe's predictions have inherent jitter. EMA filter:
+
 - Reduces high-frequency noise
 - Preserves real motion
 - Is computationally cheap
@@ -281,9 +287,44 @@ MediaPipe's predictions have inherent jitter. EMA filter:
 
 Not all use cases need velocity. Optional flag keeps the default output schema clean while supporting extended features.
 
+## Deepfake Detection with Gemini
+
+Once you've extracted landmarks, analyze them for deepfake indicators using the `deepfake_detection.py` module.
+
+### Setup
+
+Set the Google Cloud project ID:
+
+```bash
+export GOOGLE_CLOUD_PROJECT_ID="your-project-id"
+```
+
+### Basic Usage
+
+```bash
+python deepfake_detection.py video.mp4 landmarks.json
+```
+
+### Output
+
+Returns JSON with:
+
+- `authenticity_score` (0-100): Confidence the video is genuine
+- `flagged_anomalies`: Timestamps and reasons for suspicion
+- `forensic_explanation`: Technical summary of findings
+
+### Analysis Focus
+
+The detector checks for:
+
+- **Snap-to-grid effect**: Unnatural smoothness in chin acceleration
+- **Saccadic violations**: Linear eye movements instead of discrete jumps
+- **Biological noise loss**: Absence of micro-tremors (3-7 Hz)
+- **Temporal lag**: Desync between mouth and eye movements (>50ms)
+
 ## License
 
-MIT (adjust as needed for your project)
+MIT License
 
 ## References
 
