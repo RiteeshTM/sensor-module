@@ -1,5 +1,5 @@
 import firebase_admin
-from firebase_admin import credentials, storage
+from firebase_admin import credentials, storage, firestore
 import os
 from datetime import datetime
 
@@ -54,3 +54,47 @@ def upload_video_to_storage(video_path: str, bucket_folder: str = "videos") -> s
     # return blob.public_url
     
     return destination_blob_name
+
+def save_analysis_to_firestore(video_storage_path: str, analysis_result_text: str) -> str:
+    """
+    Saves the deepfake analysis result to a Firestore database collection.
+    
+    Args:
+        video_storage_path: The cloud storage path of the analyzed video.
+        analysis_result_text: The markdown and JSON result text returned by Gemini.
+        
+    Returns:
+        The Document ID of the newly created Firestore record.
+    """
+    print(f"Saving analysis results to Firestore...")
+    
+    # Initialize Firestore client
+    db = firestore.client()
+    
+    # Clean and parse the JSON from Gemini's markdown output if possible
+    # Gemini often returns ```json\n{ ... }\n```
+    clean_result = analysis_result_text
+    if clean_result.startswith("```json"):
+        clean_result = clean_result.strip("```json\n").strip("```").strip()
+        
+    try:
+        import json
+        structured_data = json.loads(clean_result)
+    except Exception:
+        # Fallback if the model didn't return perfect JSON
+        structured_data = {"raw_output": analysis_result_text}
+        
+    # Append metadata
+    document_data = {
+        "video_reference": video_storage_path,
+        "analysis": structured_data,
+        "analyzed_at": firestore.SERVER_TIMESTAMP
+    }
+    
+    # Add to an 'analyses' collection
+    doc_ref = db.collection("analyses").document()
+    doc_ref.set(document_data)
+    
+    print(f"Successfully stored in Firestore with Document ID: {doc_ref.id}")
+    return doc_ref.id
+

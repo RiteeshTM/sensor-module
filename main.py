@@ -1,5 +1,5 @@
 from deepfake_detection import generate
-from firebase_utils import initialize_firebase, upload_video_to_storage
+from firebase_utils import initialize_firebase, upload_video_to_storage, save_analysis_to_firestore
 import json
 import sys
 import os
@@ -34,6 +34,9 @@ def main():
         print(f"Video backed up to Firebase at: {storage_path}")
         print("Starting deepfake analysis...")
         results = generate(video_path, landmarks_path)
+        
+        # Save results to Firebase Firestore Database automatically
+        doc_id = save_analysis_to_firestore(storage_path, results)
         
         print("\n" + "="*50)
         print("ANALYSIS RESULTS")
