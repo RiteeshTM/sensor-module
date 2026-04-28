@@ -1,0 +1,8 @@
+[
+  {
+    "origin": ["https://deepfake-detector-494710.web.app"],
+    "method": ["GET", "POST", "PUT"],
+    "responseHeader": ["Content-Type"],
+    "maxAgeSeconds": 3600
+  }
+]

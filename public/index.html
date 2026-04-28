@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deepfake Detector</title>
+
+<style>
+body {
+font-family: Arial, sans-serif;
+background-color: #f4f7f6;
+display: flex;
+justify-content: center;
+align-items: center;
+height: 100vh;
+margin: 0;
+}
+
+.container {
+background: white;
+padding: 30px;
+border-radius: 10px;
+box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+text-align: center;
+max-width: 420px;
+width: 100%;
+}
+
+h1 { color: #333; }
+
+.form-group {
+margin: 15px 0;
+text-align: left;
+}
+
+label {
+display: block;
+margin-bottom: 5px;
+font-weight: bold;
+color: #555;
+}
+
+input[type="file"] {
+width: 100%;
+padding: 8px;
+box-sizing: border-box;
+}
+
+button {
+background-color: #4285f4;
+color: white;
+border: none;
+padding: 10px 20px;
+border-radius: 5px;
+cursor: pointer;
+font-size: 16px;
+width: 100%;
+margin-top: 15px;
+}
+
+button:hover { background-color: #357ae8; }
+button:disabled { background-color: #999; }
+
+#status {
+margin-top: 20px;
+font-size: 14px;
+color: #444;
+}
+
+#errorPanel {
+margin-top: 12px;
+padding: 10px;
+background: #fff5f5;
+border: 1px solid #f2b8b5;
+color: #7a1c1c;
+border-radius: 6px;
+font-size: 13px;
+display: none;
+white-space: pre-wrap;
+}
+
+#resultPanel {
+margin-top: 12px;
+padding: 10px;
+background: #f5faff;
+border: 1px solid #b6d3ff;
+color: #0f2f5f;
+border-radius: 6px;
+font-size: 13px;
+white-space: pre-wrap;
+display: none;
+}
+
+#versionTag {
+margin-top: 10px;
+font-size: 11px;
+color: #888;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>Deepfake Detector</h1>
+<p>Upload a video and its landmarks JSON file.</p>
+
+<div class="form-group">
+<label>Video (.mp4)</label>
+<input type="file" id="videoInput" accept="video/mp4">
+</div>
+
+<div class="form-group">
+<label>Landmarks (.json)</label>
+<input type="file" id="landmarksInput" accept="application/json">
+</div>
+
+<button id="uploadBtn">Upload & Analyze</button>
+
+<div id="status">Initializing...</div>
+<div id="errorPanel"></div>
+<div id="resultPanel"></div>
+<div id="versionTag">Build 2026-04-28.3</div>
+
+</div>
+
+
+<script type="module">
+
+import { initializeApp } from
+"https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+
+import { getStorage, ref, uploadBytesResumable }
+from "https://www.gstatic.com/firebasejs/10.11.0/firebase-storage.js";
+
+import { getFirestore, collection, query, where, getDocs }
+from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
+
+import { getAnalytics }
+from "https://www.gstatic.com/firebasejs/10.11.0/firebase-analytics.js";
+
+
+const firebaseConfig = {
+
+apiKey: "AIzaSyABdxWHYGINOsoIp4BjYiSm3iXx1G6Nv0M",
+
+authDomain: "deepfake-detector-494710.firebaseapp.com",
+
+projectId: "deepfake-detector-494710",
+
+/* IMPORTANT FIX */
+storageBucket:
+"deepfake-detector-494710.firebasestorage.app",
+
+messagingSenderId: "521504670907",
+
+appId:
+"1:521504670907:web:18c87f55df06e798e5159e",
+
+measurementId: "G-YH4Z4XPLPM"
+
+};
+
+
+const app = initializeApp(firebaseConfig);
+
+/* Analytics optional (won’t crash if blocked locally) */
+try { getAnalytics(app); } catch {}
+
+const storage = getStorage(app);
+const db = getFirestore(app);
+
+
+const videoInput =
+document.getElementById("videoInput");
+
+const landmarksInput =
+document.getElementById("landmarksInput");
+
+const uploadBtn =
+document.getElementById("uploadBtn");
+
+const statusDiv =
+document.getElementById("status");
+
+const errorPanel =
+document.getElementById("errorPanel");
+
+const resultPanel =
+document.getElementById("resultPanel");
+
+
+function setError(msg){
+
+if(!msg){
+
+errorPanel.style.display="none";
+errorPanel.textContent="";
+return;
+
+}
+
+errorPanel.style.display="block";
+errorPanel.textContent=msg;
+
+}
+
+
+function setResult(msg){
+
+if(!msg){
+
+resultPanel.style.display="none";
+resultPanel.textContent="";
+return;
+
+}
+
+resultPanel.style.display="block";
+resultPanel.textContent=msg;
+
+}
+
+
+async function pollForAnalysis(videoUri){
+
+const startTime = Date.now();
+const timeout = 90000;
+
+statusDiv.innerText =
+"Waiting for analysis results...";
+
+while(Date.now()-startTime < timeout){
+
+const q = query(
+
+collection(db,"analyses"),
+
+where("video_reference","==",videoUri)
+
+);
+
+const snapshot = await getDocs(q);
+
+if(!snapshot.empty){
+
+const data = snapshot.docs[0].data();
+
+statusDiv.innerText =
+"Analysis complete!";
+
+setResult(
+
+JSON.stringify(
+data.analysis,
+null,
+2
+)
+
+);
+
+return;
+
+}
+
+await new Promise(r=>setTimeout(r,3000));
+
+}
+
+setError(
+"Timed out waiting for results. Check Cloud Functions logs."
+);
+
+}
+
+
+uploadBtn.addEventListener(
+"click",
+async()=>{
+
+const videoFile = videoInput.files[0];
+const landmarksFile = landmarksInput.files[0];
+
+if(!videoFile || !landmarksFile){
+
+alert("Please select both files.");
+return;
+
+}
+
+uploadBtn.disabled=true;
+setError("");
+setResult("");
+
+const timestamp = Date.now();
+
+const baseName =
+`analyzed_videos/frontend_${timestamp}`;
+
+try{
+
+statusDiv.innerText="Uploading video...";
+
+const videoRef =
+ref(storage,`${baseName}.mp4`);
+
+await uploadBytesResumable(
+videoRef,
+videoFile
+);
+
+
+statusDiv.innerText=
+"Uploading landmarks & triggering analysis...";
+
+const landmarksRef =
+ref(storage,
+`${baseName}_landmarks.json`
+);
+
+await uploadBytesResumable(
+landmarksRef,
+landmarksFile
+);
+
+
+statusDiv.innerText=
+"Upload complete. Running analysis...";
+
+const expectedVideoUri =
+`gs://${firebaseConfig.storageBucket}/${baseName}.mp4`;
+
+await pollForAnalysis(expectedVideoUri);
+
+}
+catch(error){
+
+console.error(error);
+
+statusDiv.innerText="Upload failed";
+
+setError(error.message);
+
+}
+finally{
+
+uploadBtn.disabled=false;
+
+}
+
+}
+);
+
+
+statusDiv.innerText=
+"App ready. Select files to upload.";
+
+</script>
+
+</body>
+</html>
