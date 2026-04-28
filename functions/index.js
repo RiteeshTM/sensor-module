@@ -7,7 +7,7 @@ setGlobalOptions({ region: "asia-southeast1" });
 
 admin.initializeApp();
 
-exports.processLandmarks = onObjectFinalized(async (event) => {
+exports.processLandmarks = onObjectFinalized({ timeoutSeconds: 540, memory: "512MiB" }, async (event) => {
 
     const object = event.data;
     const filePath = object.name;

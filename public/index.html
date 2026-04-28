@@ -104,16 +104,11 @@ color: #888;
 <div class="container">
 
 <h1>Deepfake Detector</h1>
-<p>Upload a video and its landmarks JSON file.</p>
+<p>Upload a video to analyze it for deepfakes.</p>
 
 <div class="form-group">
 <label>Video (.mp4)</label>
 <input type="file" id="videoInput" accept="video/mp4">
-</div>
-
-<div class="form-group">
-<label>Landmarks (.json)</label>
-<input type="file" id="landmarksInput" accept="application/json">
 </div>
 
 <button id="uploadBtn">Upload & Analyze</button>
@@ -121,7 +116,7 @@ color: #888;
 <div id="status">Initializing...</div>
 <div id="errorPanel"></div>
 <div id="resultPanel"></div>
-<div id="versionTag">Build 2026-04-28.3</div>
+<div id="versionTag">Build 2026-04-28.4 (Auto Backend)</div>
 
 </div>
 
@@ -131,230 +126,124 @@ color: #888;
 import { initializeApp } from
 "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
 
-import { getStorage, ref, uploadBytesResumable }
-from "https://www.gstatic.com/firebasejs/10.11.0/firebase-storage.js";
-
 import { getFirestore, collection, query, where, getDocs }
 from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
 
-import { getAnalytics }
-from "https://www.gstatic.com/firebasejs/10.11.0/firebase-analytics.js";
-
-
 const firebaseConfig = {
-
 apiKey: "AIzaSyABdxWHYGINOsoIp4BjYiSm3iXx1G6Nv0M",
-
 authDomain: "deepfake-detector-494710.firebaseapp.com",
-
 projectId: "deepfake-detector-494710",
-
-/* IMPORTANT FIX */
-storageBucket:
-"deepfake-detector-494710.firebasestorage.app",
-
+storageBucket: "deepfake-detector-494710.firebasestorage.app",
 messagingSenderId: "521504670907",
-
-appId:
-"1:521504670907:web:18c87f55df06e798e5159e",
-
+appId: "1:521504670907:web:18c87f55df06e798e5159e",
 measurementId: "G-YH4Z4XPLPM"
-
 };
 
-
 const app = initializeApp(firebaseConfig);
-
-/* Analytics optional (won’t crash if blocked locally) */
-try { getAnalytics(app); } catch {}
-
-const storage = getStorage(app);
 const db = getFirestore(app);
 
-
-const videoInput =
-document.getElementById("videoInput");
-
-const landmarksInput =
-document.getElementById("landmarksInput");
-
-const uploadBtn =
-document.getElementById("uploadBtn");
-
-const statusDiv =
-document.getElementById("status");
-
-const errorPanel =
-document.getElementById("errorPanel");
-
-const resultPanel =
-document.getElementById("resultPanel");
-
+const videoInput = document.getElementById("videoInput");
+const uploadBtn = document.getElementById("uploadBtn");
+const statusDiv = document.getElementById("status");
+const errorPanel = document.getElementById("errorPanel");
+const resultPanel = document.getElementById("resultPanel");
 
 function setError(msg){
-
 if(!msg){
-
 errorPanel.style.display="none";
 errorPanel.textContent="";
 return;
-
 }
-
 errorPanel.style.display="block";
 errorPanel.textContent=msg;
-
 }
 
-
 function setResult(msg){
-
 if(!msg){
-
 resultPanel.style.display="none";
 resultPanel.textContent="";
 return;
-
 }
-
 resultPanel.style.display="block";
 resultPanel.textContent=msg;
-
 }
 
-
 async function pollForAnalysis(videoUri){
-
 const startTime = Date.now();
 const timeout = 90000;
 
-statusDiv.innerText =
-"Waiting for analysis results...";
+statusDiv.innerText = "Waiting for analysis results from Cloud...";
 
 while(Date.now()-startTime < timeout){
-
 const q = query(
-
 collection(db,"analyses"),
-
 where("video_reference","==",videoUri)
-
 );
 
 const snapshot = await getDocs(q);
 
 if(!snapshot.empty){
-
 const data = snapshot.docs[0].data();
-
-statusDiv.innerText =
-"Analysis complete!";
-
-setResult(
-
-JSON.stringify(
-data.analysis,
-null,
-2
-)
-
-);
-
+statusDiv.innerText = "Analysis complete!";
+setResult(JSON.stringify(data.analysis, null, 2));
 return;
-
 }
 
 await new Promise(r=>setTimeout(r,3000));
-
 }
 
-setError(
-"Timed out waiting for results. Check Cloud Functions logs."
-);
-
+setError("Timed out waiting for results. Check Cloud Functions logs.");
 }
 
-
-uploadBtn.addEventListener(
-"click",
-async()=>{
-
+uploadBtn.addEventListener("click", async()=>{
 const videoFile = videoInput.files[0];
-const landmarksFile = landmarksInput.files[0];
 
-if(!videoFile || !landmarksFile){
-
-alert("Please select both files.");
+if(!videoFile){
+alert("Please select a video file.");
 return;
-
 }
 
 uploadBtn.disabled=true;
 setError("");
 setResult("");
 
-const timestamp = Date.now();
-
-const baseName =
-`analyzed_videos/frontend_${timestamp}`;
-
 try{
+statusDiv.innerText="Uploading to processing backend...";
 
-statusDiv.innerText="Uploading video...";
+const formData = new FormData();
+formData.append("video", videoFile);
 
-const videoRef =
-ref(storage,`${baseName}.mp4`);
+// Call local Python FastAPI backend
+const response = await fetch("http://localhost:8000/analyze", {
+  method: "POST",
+  body: formData
+});
 
-await uploadBytesResumable(
-videoRef,
-videoFile
-);
+if (!response.ok) {
+  const errData = await response.json();
+  throw new Error(errData.error || "Upload to backend failed");
+}
 
+const data = await response.json();
+statusDiv.innerText="Backend processing complete. Running analysis...";
 
-statusDiv.innerText=
-"Uploading landmarks & triggering analysis...";
-
-const landmarksRef =
-ref(storage,
-`${baseName}_landmarks.json`
-);
-
-await uploadBytesResumable(
-landmarksRef,
-landmarksFile
-);
-
-
-statusDiv.innerText=
-"Upload complete. Running analysis...";
-
-const expectedVideoUri =
-`gs://${firebaseConfig.storageBucket}/${baseName}.mp4`;
+const expectedVideoUri = data.videoUri;
 
 await pollForAnalysis(expectedVideoUri);
 
 }
 catch(error){
-
 console.error(error);
-
 statusDiv.innerText="Upload failed";
-
 setError(error.message);
-
 }
 finally{
-
 uploadBtn.disabled=false;
-
 }
 
-}
-);
+});
 
-
-statusDiv.innerText=
-"App ready. Select files to upload.";
+statusDiv.innerText="App ready. Select a video to upload.";
 
 </script>
 

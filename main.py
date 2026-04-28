@@ -1,5 +1,5 @@
 from deepfake_detection import generate
-from firebase_utils import initialize_firebase, upload_video_to_storage, save_analysis_to_firestore
+from firebase_utils import initialize_firebase, upload_file_to_storage, save_analysis_to_firestore
 import json
 import sys
 import os
@@ -28,7 +28,7 @@ def main():
         initialize_firebase(project_id)
         
         # Perform Video Upload to Firebase Storage
-        storage_path = upload_video_to_storage(video_path, bucket_folder="analyzed_videos")
+        storage_path = upload_file_to_storage(video_path, bucket_folder="analyzed_videos", is_video=True)
         
         # After upload finishes, call Gemini to analyze the deepfake locally
         print(f"Video backed up to Firebase at: {storage_path}")

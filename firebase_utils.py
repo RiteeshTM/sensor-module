@@ -21,37 +21,44 @@ def initialize_firebase(project_id: str):
         })
         print(f"Firebase initialized for project: {project_id}")
 
-def upload_video_to_storage(video_path: str, bucket_folder: str = "videos") -> str:
+def upload_file_to_storage(file_path: str, bucket_folder: str = "analyzed_videos", is_video: bool = True, timestamp: str = None) -> str:
     """
-    Uploads a video to Firebase Cloud Storage.
+    Uploads a file to Firebase Cloud Storage.
     
     Args:
-        video_path: path to the local video file.
+        file_path: path to the local file.
         bucket_folder: Folder name in the storage bucket.
+        is_video: True if it's a video, False if it's JSON.
+        timestamp: Optional timestamp to use for the filename prefix.
         
     Returns:
-        The public or signed URL of the uploaded video, or the blob path.
+        The destination blob name of the uploaded file.
     """
-    if not os.path.exists(video_path):
-        raise FileNotFoundError(f"Video file not found: {video_path}")
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"File not found: {file_path}")
 
-    filename = os.path.basename(video_path)
-    timestamp = datetime.now().strftime("%Y%md_%H%M%S")
-    destination_blob_name = f"{bucket_folder}/{timestamp}_{filename}"
+    filename = os.path.basename(file_path)
+    if not timestamp:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    
+    # Cloud function expects analyzed_videos/frontend_<timestamp>.mp4
+    # and analyzed_videos/frontend_<timestamp>_landmarks.json
+    # We will use 'backend' instead of 'frontend' but keep the same structure
+    if is_video:
+        destination_blob_name = f"{bucket_folder}/backend_{timestamp}.mp4"
+        content_type = 'video/mp4'
+    else:
+        destination_blob_name = f"{bucket_folder}/backend_{timestamp}_landmarks.json"
+        content_type = 'application/json'
     
     bucket = storage.bucket()
     blob = bucket.blob(destination_blob_name)
     
-    print(f"Uploading {video_path} to Firebase Storage as {destination_blob_name}...")
+    print(f"Uploading {file_path} to Firebase Storage as {destination_blob_name}...")
     
-    # Specify the correct content type for mp4
-    blob.upload_from_filename(video_path, content_type='video/mp4')
+    blob.upload_from_filename(file_path, content_type=content_type)
     
     print("Upload complete.")
-    
-    # You can also make it publicly accessible if needed:
-    # blob.make_public()
-    # return blob.public_url
     
     return destination_blob_name
 
