@@ -15,6 +15,10 @@ const firebaseConfig = {
   measurementId: "G-YH4Z4XPLPM"
 };
 
+const BACKEND_URL =
+  (typeof window !== "undefined" && window.__APP_CONFIG__?.BACKEND_URL) ||
+  "https://sensor-backend-521504670907.asia-southeast1.run.app";
+
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
@@ -164,7 +168,7 @@ function App() {
       formData.append("video", videoFile);
 
       // Call deployed Python FastAPI backend
-      const response = await fetch("https://sensor-backend-521504670907.asia-southeast1.run.app/analyze", {
+      const response = await fetch(`${BACKEND_URL}/analyze`, {
         method: "POST",
         body: formData
       });
@@ -425,7 +429,7 @@ function App() {
                   </div>
                   <div className="metric-item">
                     <span className="metric-name">Neural Network</span>
-                    <span className="metric-value">Gemini-Vision-v4</span>
+                    <span className="metric-value">Gemini 3.1 Pro (Vertex AI)</span>
                   </div>
                 </div>
 

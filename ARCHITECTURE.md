@@ -1,4 +1,23 @@
-# Architecture & Design
+# Architecture & Technical Design: Kinetic Forensics
+
+## 🏗️ System Overview
+
+Kinetic Forensics follows a distributed, multi-modal architecture designed to separate heavy computation (MediaPipe) from deep reasoning (Gemini).
+
+```mermaid
+graph TD
+    A[User Video Upload] -->|React Frontend| B(Firebase Hosting)
+    B -->|POST /analyze| C(Google Cloud Run)
+    C -->|MediaPipe Face Landmarker| D[Landmark Extraction]
+    D -->|Upload Landmarks JSON| E(Cloud Storage)
+    C -->|Upload Original Video| E
+    E -->|Trigger| F(Firebase Cloud Functions)
+    F -->|Reasoning Engine| G(Gemini 3.1 Pro)
+    G -->|Forensic Report| H(Cloud Firestore)
+    H -->|Real-time Poll| A
+```
+
+---
 
 ## Data Flow
 
@@ -204,12 +223,3 @@ with open('test_output.json') as f:
 "
 ```
 
-## Future Enhancements
-
-1. **Batch processing** - Process multiple videos in parallel
-2. **GPU acceleration** - CUDA/Metal GPU support
-3. **Real-time streaming** - Socket input for live feeds
-4. **Visualization** - Draw landmarks on output video
-5. **Statistics export** - Mean, std dev, correlation of landmarks
-6. **Model selection** - Lite/Full/Heavy variants
-7. **Pose integration** - Combine with MediaPipe Pose Landmarker

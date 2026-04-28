@@ -25,15 +25,27 @@ A comprehensive deepfake detection system combining facial landmark extraction, 
 
 ## Overview
 
-This is the **sensor module** component of a deepfake detection system that:
+**Kinetic Forensics** is an AI-powered prototype built for the **Google AI Challenge**. It solves a critical problem: traditional deepfake detection is failing because generative AI has perfected visual realism. Our solution ignores surface pixels and instead analyzes "Kinetic Dissonance"—movements that contradict human physiology.
 
-1. **Extracts facial landmarks** from videos using MediaPipe Face Landmarker (478-point facial mesh)
-2. **Processes video uploads** via FastAPI backend with Cloud Storage integration
-3. **Analyzes video content** using Google's Gemini AI model
-4. **Stores results** in Firebase Firestore for persistence and real-time queries
-5. **Supports web frontend** via Firebase hosting with CORS middleware
+---
 
-The system is designed for production deployment on Google Cloud Platform with full Firebase integration.
+### 🚀 The 6-Step Prototype Journey
+Built following the Google AI 6-Step Guide:
+1. **The Problem**: Visual detection is obsolete; physics is the new frontier.
+2. **Scope**: Focused exclusively on 3D landmarks and jitter analysis.
+3. **Logic**: Video → MediaPipe (Cloud Run) → Gemini 3.1 Pro (Vertex AI).
+4. **Iterate**: Tuned prompts to hunt for "perfect" AI movement vs. "noisy" human jitter.
+5. **Build**: React frontend hosted on **Firebase**, Python extraction on **Cloud Run**.
+6. **Present**: A forensic audit dashboard proving trust in the digital landscape.
+
+---
+
+### 🛠️ Manual Model Setup
+The system automatically downloads the required AI models, but you can set them up manually if needed:
+1. **MediaPipe Model**: Download [face_landmarker.task](https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task) and place it in the root directory.
+2. **Dependencies**: Run `pip install -r requirements.txt` and `npm install` in the `Frontend` directory.
+
+---
 
 ## Project Structure
 
@@ -791,39 +803,6 @@ A: Yes, edit `deepfake_detection.py` to use Claude, GPT-4, or other models.
 
 **Q: Is this suitable for production use?**
 A: Yes, the code is tested and handles errors gracefully. Follow security best practices before deployment.
-
-## Contributing
-
-Contributions are welcome! Please follow these guidelines:
-
-1. **Fork** the repository
-2. **Create** a feature branch (`git checkout -b feature/amazing-feature`)
-3. **Commit** changes with clear messages (`git commit -m 'Add amazing feature'`)
-4. **Push** to the branch (`git push origin feature/amazing-feature`)
-5. **Open** a pull request with detailed description
-
-### Code Style
-
-- Follow PEP 8 guidelines
-- Use type hints for all functions
-- Add docstrings to all public functions
-- Keep functions focused and modular
-
-### Testing
-
-- Write tests for new features
-- Ensure all tests pass: `pytest`
-- Maintain >80% code coverage
-
-### Reporting Issues
-
-Please include:
-
-- Python version
-- Operating system
-- Minimal code to reproduce
-- Error messages and stack traces
-- Expected vs. actual behavior
 
 ## 📄 License
 

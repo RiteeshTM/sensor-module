@@ -55,6 +55,7 @@ async def analyze_video(video: UploadFile = File(...)):
             output_json=Path(temp_landmarks_path),
             model_path=Path("face_landmarker.task")
         )
+
         
         # Upload video to Firebase Storage
         video_blob = upload_file_to_storage(
