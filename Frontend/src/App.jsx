@@ -2,6 +2,21 @@ import React, { useState, useRef } from 'react';
 import { Upload, FileVideo, Shield, AlertTriangle, CheckCircle, RefreshCcw, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Typewriter from './components/Typewriter';
+import { initializeApp } from "firebase/app";
+import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyABdxWHYGINOsoIp4BjYiSm3iXx1G6Nv0M",
+  authDomain: "deepfake-detector-494710.firebaseapp.com",
+  projectId: "deepfake-detector-494710",
+  storageBucket: "deepfake-detector-494710.firebasestorage.app",
+  messagingSenderId: "521504670907",
+  appId: "1:521504670907:web:18c87f55df06e798e5159e",
+  measurementId: "G-YH4Z4XPLPM"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
 const JitterGraph = ({ status }) => {
   const points = Array.from({ length: 40 }, (_, i) => ({
@@ -135,22 +150,82 @@ function App() {
     }
   };
 
-  const runAnalysis = () => {
+  const runAnalysis = async () => {
+    if (!videoFile) return;
     setIsAnalyzing(true);
-    // Simulation of backend processing using the provided forensic logic
-    setTimeout(() => {
-      setIsAnalyzing(false);
-      const isReal = Math.random() > 0.3; // Favor real for the demo
-      setResult({
-        probability: isReal ? Math.floor(Math.random() * 15) : Math.floor(Math.random() * 60 + 40),
-        confidence: 98.4,
-        framesAnalyzed: 148,
-        status: isReal ? 'Real' : 'Fake',
-        report: isReal 
-          ? "The analysis of the facial landmark data reveals consistent biological noise and micro-tremors (3-7 Hz) across the chin and eyebrow coordinates, which is characteristic of genuine human physiology. The eye tracking data demonstrates natural, discrete saccadic jumps rather than the linear, synthetic interpolation often seen in AI-generated videos. Furthermore, the acceleration of the jaw and head movements adheres to the law of inertia, showing appropriate mass and momentum without any 'weightless' transitions or 'snap-to-grid' effects. The temporal synchronization between the eyes, mouth, and overall head movement is well within natural human limits, indicating an authentic video."
-          : "The forensic analysis detected anomalies in temporal consistency and facial geometry. High-frequency artifacts were observed in the landmark trajectories, particularly around the eye region, suggesting synthetic interpolation. The kinetic jitter exceeds biological limits (12-15 Hz), indicating frame-by-frame neural generation. Saccadic eye movements appear dampened or overly smooth, a common sign of generative face-swapping techniques."
+    setResult(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("video", videoFile);
+
+      // Call deployed Python FastAPI backend
+      const response = await fetch("https://sensor-backend-521504670907.asia-southeast1.run.app/analyze", {
+        method: "POST",
+        body: formData
       });
-    }, 3000);
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || "Upload to backend failed");
+      }
+
+      const data = await response.json();
+      const expectedVideoUri = data.videoUri;
+
+      await pollForAnalysis(expectedVideoUri);
+    } catch (error) {
+      console.error(error);
+      setIsAnalyzing(false);
+      alert("Analysis failed: " + error.message);
+    }
+  };
+
+  const pollForAnalysis = async (videoUri) => {
+    const startTime = Date.now();
+    const timeout = 90000;
+
+    while (Date.now() - startTime < timeout) {
+      const q = query(
+        collection(db, "analyses"),
+        where("video_reference", "==", videoUri)
+      );
+
+      const snapshot = await getDocs(q);
+
+      if (!snapshot.empty) {
+        const data = snapshot.docs[0].data();
+        setIsAnalyzing(false);
+        
+        let analysisData = data.analysis;
+        if (typeof analysisData === 'string') {
+            try {
+                analysisData = JSON.parse(analysisData);
+            } catch (e) {
+                console.error("Failed to parse analysis JSON:", e);
+                analysisData = {};
+            }
+        }
+        
+        const score = Number(analysisData.authenticity_score) || 0;
+        const probabilityFake = 100 - score;
+        const status = probabilityFake >= 50 ? 'Fake' : 'Real';
+        
+        setResult({
+          probability: probabilityFake,
+          confidence: Math.max(score, probabilityFake).toFixed(1),
+          framesAnalyzed: 150,
+          status: status,
+          report: analysisData.forensic_explanation || JSON.stringify(analysisData)
+        });
+        return;
+      }
+
+      await new Promise(r => setTimeout(r, 3000));
+    }
+
+    setIsAnalyzing(false);
+    alert("Timed out waiting for results. Check Cloud Functions logs.");
   };
 
   const reset = () => {

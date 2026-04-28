@@ -30,6 +30,11 @@ app.add_middleware(
 project_id = os.environ.get("GOOGLE_CLOUD_PROJECT_ID", "deepfake-detector-494710")
 initialize_firebase(project_id)
 
+@app.get("/")
+def health():
+    return {"status": "running"}
+
+
 @app.post("/analyze")
 async def analyze_video(video: UploadFile = File(...)):
     try:

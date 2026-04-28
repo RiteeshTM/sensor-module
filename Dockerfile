@@ -1,22 +1,24 @@
-FROM python:3.11-slim-bookworm
-
-# System deps required by mediapipe + opencv
-RUN apt-get update && apt-get install -y \
-    libgl1-mesa-glx \
-    libglib2.0-0 \
-    libgles2 \
-    && rm -rf /var/lib/apt/lists/*
+FROM python:3.10-slim
 
 WORKDIR /app
 
-# Install Python dependencies
-COPY requirements.txt .
+ENV MEDIAPIPE_DISABLE_GPU=1
+
+RUN apt-get update && apt-get install -y \
+    libglib2.0-0 \
+    libgl1 \
+    libgl1-mesa-glx \
+    libgl1-mesa-dri \
+    libegl1 \
+    libgles2 \
+    libsm6 \
+    libxext6 \
+    libxrender1 \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY . .
+
 RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy only the files the server needs at runtime
-COPY server.py sensor.py firebase_utils.py face_landmarker.task ./
-
-# Cloud Run listens on 8080
-EXPOSE 8080
 
 CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8080"]
