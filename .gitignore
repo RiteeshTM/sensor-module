@@ -1,0 +1,34 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# MediaPipe model (auto-downloaded)
+face_landmarker.task
+
+# Input/output media files
+input.mp4
+input.mov
+input_*.json
+output_*.json
+*.json.bak
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS-specific files
+Thumbs.db
+
+# Environment files (optional - comment out if using multiple Python versions)
+.python-version
