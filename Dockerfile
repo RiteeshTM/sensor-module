@@ -1,9 +1,10 @@
-FROM python:3.11-slim
+FROM python:3.11-slim-bookworm
 
 # System deps required by mediapipe + opencv
 RUN apt-get update && apt-get install -y \
-    libgl1 \
+    libgl1-mesa-glx \
     libglib2.0-0 \
+    libgles2 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
