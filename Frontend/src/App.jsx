@@ -75,6 +75,11 @@ const JitterGraph = ({ status }) => {
       </div>
 
       <svg width="100%" height="100%" viewBox="0 0 400 100" preserveAspectRatio="none" style={{ overflow: 'visible' }}>
+        {/* Baseline Range (Normal Human Jitter) */}
+        <rect x="0" y="42" width="400" height="16" fill="var(--accent-color)" fillOpacity="0.05" />
+        <line x1="0" y1="42" x2="400" y2="42" stroke="var(--accent-color)" strokeWidth="0.5" strokeDasharray="4" strokeOpacity="0.2" />
+        <line x1="0" y1="58" x2="400" y2="58" stroke="var(--accent-color)" strokeWidth="0.5" strokeDasharray="4" strokeOpacity="0.2" />
+        
         {/* Y Axis Line */}
         <line x1="0" y1="0" x2="0" y2="100" stroke="var(--border-color)" strokeWidth="1" strokeOpacity="0.5" />
         {/* X Axis Line */}
@@ -135,10 +140,20 @@ function App() {
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file && file.type.startsWith('video/')) {
-      setVideoFile(file);
-      setVideoUrl(URL.createObjectURL(file));
-      setResult(null);
-      setAnalysisStatus("");
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      video.onloadedmetadata = () => {
+        window.URL.revokeObjectURL(video.src);
+        if (video.duration > 60) {
+          alert("Safety Limit: Please upload a video shorter than 60 seconds.");
+        } else {
+          setVideoFile(file);
+          setVideoUrl(URL.createObjectURL(file));
+          setResult(null);
+          setAnalysisStatus("");
+        }
+      };
+      video.src = URL.createObjectURL(file);
     }
   };
 
@@ -150,10 +165,20 @@ function App() {
     e.preventDefault();
     const file = e.dataTransfer.files[0];
     if (file && file.type.startsWith('video/')) {
-      setVideoFile(file);
-      setVideoUrl(URL.createObjectURL(file));
-      setResult(null);
-      setAnalysisStatus("");
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      video.onloadedmetadata = () => {
+        window.URL.revokeObjectURL(video.src);
+        if (video.duration > 60) {
+          alert("Safety Limit: Please upload a video shorter than 60 seconds.");
+        } else {
+          setVideoFile(file);
+          setVideoUrl(URL.createObjectURL(file));
+          setResult(null);
+          setAnalysisStatus("");
+        }
+      };
+      video.src = URL.createObjectURL(file);
     }
   };
 
@@ -236,7 +261,7 @@ function App() {
         setResult({
           probability: probabilityFake,
           confidence: Math.max(score, probabilityFake).toFixed(1),
-          framesAnalyzed: 150,
+          framesAnalyzed: data.total_frames || 150,
           status: status,
           report: analysisData.forensic_explanation || JSON.stringify(analysisData)
         });
@@ -264,7 +289,7 @@ function App() {
         <div className="logo">DEEPFAKE DETECTOR</div>
         <div style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <Info size={18} />
-          <span>v1.0.0</span>
+          <span>v1.2.0</span>
         </div>
       </header>
 
@@ -288,7 +313,7 @@ function App() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
           >
-            Upload your video for a comprehensive forensic analysis using our advanced neural network.
+            Upload a video (Face Only) for a comprehensive forensic analysis using our advanced physics-based neural engine.
           </motion.p>
         </div>
 
@@ -307,7 +332,7 @@ function App() {
                 <span style={{ display: 'block', fontSize: '1.2rem', fontWeight: '500', color: 'var(--text-primary)' }}>
                   Click to upload or drag and drop
                 </span>
-                <span style={{ fontSize: '0.9rem' }}>MP4, WebM, MOV (Max 50MB)</span>
+                <span style={{ fontSize: '0.9rem' }}>MP4, WebM, MOV (Max 50MB / 60s)</span>
               </div>
               <input 
                 type="file" 
@@ -384,6 +409,28 @@ function App() {
           )}
         </div>
 
+        <motion.div 
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          className="physics-explanation"
+          style={{ 
+            maxWidth: '800px', 
+            marginTop: '3rem', 
+            textAlign: 'center', 
+            padding: '2rem',
+            background: 'rgba(255,255,255,0.02)',
+            borderRadius: '24px',
+            border: '1px solid rgba(255,255,255,0.05)'
+          }}
+        >
+          <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem', color: 'var(--accent-color)' }}>How the Physics Engine Works</h2>
+          <p style={{ lineHeight: '1.7', color: 'var(--text-secondary)', fontSize: '1.05rem' }}>
+            Unlike traditional detectors that look for visual glitches, our <strong>Kinetic Physics Engine</strong> strips away the surface pixels to analyze pure 3D movement. 
+            It detects "Kinetic Dissonance"—physical inconsistencies that occur when AI-generated faces violate the laws of mass, inertia, and biological jitter. 
+            Real humans have unique micro-tremors (3-7 Hz) and discrete eye jumps that neural networks often fail to replicate, making our physics-based approach future-proof against even the most realistic deepfakes.
+          </p>
+        </motion.div>
+
         <AnimatePresence>
           {result && (
             <motion.div 
@@ -419,15 +466,15 @@ function App() {
               <div className="result-card">
                 <h3 style={{ marginBottom: '1.5rem', fontFamily: 'var(--font-header)' }}>Detailed Analysis</h3>
                 <div className="metrics-grid">
-                  <div className="metric-item">
+                  <div className="metric-item" title="The AI's certainty level in its final verdict based on kinetic patterns.">
                     <span className="metric-name">Confidence Score</span>
                     <span className="metric-value">{result.confidence}%</span>
                   </div>
-                  <div className="metric-item">
+                  <div className="metric-item" title="The total number of individual video frames processed by MediaPipe Face Landmarker.">
                     <span className="metric-name">Frames Analyzed</span>
                     <span className="metric-value">{result.framesAnalyzed}</span>
                   </div>
-                  <div className="metric-item">
+                  <div className="metric-item" title="The multi-modal LLM performing the forensic reasoning.">
                     <span className="metric-name">Neural Network</span>
                     <span className="metric-value">Gemini 3.1 Pro (Vertex AI)</span>
                   </div>

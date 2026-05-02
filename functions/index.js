@@ -60,6 +60,13 @@ exports.processLandmarks = onObjectFinalized({ timeoutSeconds: 540, memory: "512
       }
     };
     
+    // Prepare summarized text and capture total frames for Firestore
+    let totalFrames = 0;
+    try {
+      const records = JSON.parse(landmarksText);
+      totalFrames = records.length;
+    } catch (e) {}
+
     const summarizedLandmarksText = summarizeLandmarks(landmarksText);
 
     const promptText = `System Persona:
@@ -136,6 +143,7 @@ ${summarizedLandmarksText}`;
         video_reference: videoUri,
         landmarks_reference: `gs://${bucketName}/${filePath}`,
         analysis: parsedResult,
+        total_frames: totalFrames,
         analyzed_at: admin.firestore.FieldValue.serverTimestamp()
       });
 
