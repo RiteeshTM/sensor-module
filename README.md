@@ -1,824 +1,580 @@
-# DeepFake Detector - Sensor Module
+# 🔬 Kinetic Forensics — AI-Powered Deepfake Detection
 
-A comprehensive deepfake detection system combining facial landmark extraction, AI-powered video analysis, and cloud infrastructure. This repository contains the backend sensor module that processes videos, extracts facial landmarks, and integrates with Google's Gemini AI for deepfake analysis.
+<div align="center">
 
-**Status**: Production-Ready | **Python**: 3.8+ | **Architecture**: FastAPI + Firebase + MediaPipe
+![Python](https://img.shields.io/badge/Python-3.8+-blue?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green?logo=fastapi&logoColor=white)
+![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
+![Google Cloud](https://img.shields.io/badge/Google%20Cloud-Run%20%2B%20Functions-4285F4?logo=googlecloud&logoColor=white)
+![Firebase](https://img.shields.io/badge/Firebase-Hosting%20%2B%20Firestore%20%2B%20Storage-FFCA28?logo=firebase&logoColor=black)
+![Gemini](https://img.shields.io/badge/Gemini-Vertex%20AI%20%7C%20AI%20Studio-8E44AD?logo=google&logoColor=white)
+![MediaPipe](https://img.shields.io/badge/MediaPipe-Face%20Landmarker-0097A7?logo=google&logoColor=white)
 
-## Table of Contents
+**A physics-based deepfake detection system that ignores surface pixels and instead analyzes the laws of motion.**
 
-- [Overview](#overview)
-- [Project Structure](#project-structure)
-- [Features](#features)
-- [Quick Start](#quick-start)
-- [Installation](#installation)
-- [Usage](#usage)
-  - [Sensor Module (CLI)](#sensor-module-cli)
-  - [API Server](#api-server)
-  - [End-to-End Analysis](#end-to-end-analysis)
-- [API Documentation](#api-documentation)
-- [Output Format](#output-format)
-- [Configuration](#configuration)
-- [Architecture](#architecture)
-- [Troubleshooting](#troubleshooting)
-- [Contributing](#contributing)
-- [License](#license)
+*"Generative AI has perfected visual realism. But it cannot perfectly simulate physics."*
 
-## Overview
+[Architecture](#-architecture) • [Cloud Deployment](#-production-cloud-deployment) • [Local Setup](#-run-locally-zero-cost) • [API Reference](#-api-reference) • [How It Works](#-how-the-physics-engine-works)
 
-**Kinetic Forensics** is an AI-powered prototype built for the **Google AI Challenge**. It solves a critical problem: traditional deepfake detection is failing because generative AI has perfected visual realism. Our solution ignores surface pixels and instead analyzes "Kinetic Dissonance"—movements that contradict human physiology.
+</div>
 
 ---
 
-### 🚀 The 6-Step Prototype Journey
-Built following the Google AI 6-Step Guide:
-1. **The Problem**: Visual detection is obsolete; physics is the new frontier.
-2. **Scope**: Focused exclusively on 3D landmarks and jitter analysis.
-3. **Logic**: Video → MediaPipe (Cloud Run) → Gemini 3.1 Pro (Vertex AI).
-4. **Iterate**: Tuned prompts to hunt for "perfect" AI movement vs. "noisy" human jitter.
-5. **Build**: React frontend hosted on **Firebase**, Python extraction on **Cloud Run**.
-6. **Present**: A forensic audit dashboard proving trust in the digital landscape.
+## 🎯 The Problem This Solves
+
+Traditional deepfake detectors look for **visual artifacts** — blurry edges, mismatched lighting, face warping. But modern generative AI (diffusion models, GAN-based face-swappers) has made these detectors obsolete. The fakes look perfect.
+
+**Kinetic Forensics takes a fundamentally different approach:**
+
+> Instead of asking *"does this face look real?"*, we ask *"does this face move like a real human?"*
+
+Human faces are governed by **biology and physics**. They have mass, inertia, biological micro-tremors, and involuntary eye movements (saccades). AI-generated faces, no matter how realistic, consistently fail to replicate these exact physical signatures. We call these failures **"Kinetic Dissonance."**
 
 ---
 
-### 🛠️ Manual Model Setup
-The system automatically downloads the required AI models, but you can set them up manually if needed:
-1. **MediaPipe Model**: Download [face_landmarker.task](https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task) and place it in the root directory.
-2. **Dependencies**: Run `pip install -r requirements.txt` and `npm install` in the `Frontend` directory.
+## 🏗️ Architecture
 
----
+### Production Cloud Architecture (GCP + Firebase)
 
-## Project Structure
+This system was **fully deployed and operational** on Google Cloud Platform during the Google AI Challenge. The complete event-driven cloud pipeline is:
 
 ```
-sensor-module/
-├── sensor.py                 # Core landmark extraction engine
-├── server.py                 # FastAPI backend server
-├── deepfake_detection.py     # Gemini AI analysis integration
-├── firebase_utils.py         # Firebase Admin SDK utilities
-├── main.py                   # Example end-to-end workflow
-├── requirements.txt          # Python dependencies
-├── pyproject.toml           # Project configuration
-├── ARCHITECTURE.md          # Detailed architecture documentation
-├── README.md                # This file
-├── functions/               # Google Cloud Functions (optional)
-│   ├── index.js
-│   └── package.json
-├── public/                  # Firebase hosting frontend
-│   └── index.html
-├── face_landmarker.task     # MediaPipe model file (auto-downloaded)
-├── firebase.json            # Firebase configuration
-├── cors.json                # CORS settings
-└── storage.rules            # Firebase Storage security rules
+┌─────────────────────────────────────────────────────────────────────┐
+│                     PRODUCTION CLOUD STACK                          │
+└─────────────────────────────────────────────────────────────────────┘
+
+User Browser (Firebase Hosting)
+        │
+        │  HTTPS POST /analyze  (video file upload)
+        ▼
+┌──────────────────────────────────────────────────┐
+│  FastAPI Backend  ──  Google Cloud Run           │
+│  • Containerized Python (Docker)                 │
+│  • MediaPipe Face Landmarker (478-point 3D mesh) │
+│  • Extracts: chin, iris centers, eyebrows        │
+│  • Output: timestamped JSON landmark array       │
+└────────────┬─────────────────────────────────────┘
+             │
+             │  Upload (video + landmarks JSON)
+             ▼
+┌──────────────────────────────────────────────────┐
+│  Firebase Cloud Storage                          │
+│  analyzed_videos/<timestamp>.mp4                 │
+│  analyzed_videos/<timestamp>_landmarks.json      │
+└────────────┬─────────────────────────────────────┘
+             │
+             │  onObjectFinalized trigger (landmarks.json)
+             ▼
+┌──────────────────────────────────────────────────┐
+│  Firebase Cloud Functions (Node.js v2)           │
+│  • Downloads landmark JSON from Storage          │
+│  • Samples frames intelligently (max 240)        │
+│  • Calls Vertex AI with video + landmark prompt  │
+└────────────┬─────────────────────────────────────┘
+             │
+             │  Multi-modal prompt (video + landmark JSON)
+             ▼
+┌──────────────────────────────────────────────────┐
+│  Google Vertex AI — Gemini 3.1 Pro               │
+│  System Persona: Forensic Biometrics Analyst     │
+│  Analyzes: chin acceleration, saccadic gaze,     │
+│            biological jitter, temporal lag       │
+│  Output: { authenticity_score, anomalies,        │
+│            forensic_explanation }                │
+└────────────┬─────────────────────────────────────┘
+             │
+             │  Write to Firestore "analyses" collection
+             ▼
+┌──────────────────────────────────────────────────┐
+│  Cloud Firestore (NoSQL Database)                │
+│  Document: { video_reference, analysis,          │
+│              total_frames, analyzed_at }         │
+└────────────┬─────────────────────────────────────┘
+             │
+             │  Real-time polling (4s intervals, 5min timeout)
+             ▼
+User Browser — Results Dashboard
+  • Deepfake Probability Gauge
+  • Kinetic Jitter SVG Time-Series Chart
+  • AI Forensic Explanation (typewriter animation)
 ```
 
-## Features
+### Dual-Mode Architecture (v2.0)
 
-### Landmark Extraction
+After the GCP free trial expired, the system was upgraded to support **graceful degradation** — a pattern used in production-grade distributed systems. It now operates identically in two modes without any code changes:
 
-- **Frame-by-frame landmark extraction** using MediaPipe Face Landmarker (478-point model)
-- **Smart landmark selection**: chin, averaged pupil centers (iris), and eyebrows
-- **Temporal continuity**: preserves timeline even when faces are not detected
-- **EMA smoothing**: optional exponential moving average to reduce jitter noise (configurable alpha 0.0-1.0)
-- **Velocity computation**: optional chin movement speed calculation
-- **Automatic model download**: fetches official MediaPipe model on first run
-- **Robust error handling**: skips corrupted frames without breaking the pipeline
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     MODE SELECTION                          │
+│                                                             │
+│  Environment Variables Set?   →   Mode Used                 │
+│  ─────────────────────────────────────────────             │
+│  gcloud ADC + GCP Project     →   Production Cloud Mode    │
+│  GEMINI_API_KEY only          →   AI Studio Mode (free)    │
+│  Nothing set                  →   Physics Heuristic Mode   │
+└─────────────────────────────────────────────────────────────┘
+```
 
-### Backend API
+| Component | Production Cloud | AI Studio Mode | Heuristic Mode |
+|---|---|---|---|
+| **Compute** | Google Cloud Run | Local (any machine) | Local |
+| **AI Engine** | Vertex AI Gemini 3.1 Pro | Gemini 2.5 Flash | Physics algorithm |
+| **Storage** | Firebase Cloud Storage | Firebase (if avail.) | Local temp files |
+| **Database** | Cloud Firestore | Firestore (if avail.) | Direct API response |
+| **Frontend** | Firebase Hosting | `npm run dev` | `npm run dev` |
+| **Cost** | GCP billing required | Free tier | Zero cost |
+| **Analysis Quality** | Full multi-modal AI | High quality AI | Deterministic physics |
 
-- **Video upload endpoint** with multipart form data support
-- **Asynchronous processing** with timestamp-based file management
-- **CORS middleware** for cross-origin requests from web frontends
-- **Real-time Firebase integration** for file storage and Firestore updates
-- **Error handling** with detailed HTTP status codes and messages
+---
 
-### AI Analysis
+## 🔬 How the Physics Engine Works
 
-- **Google Gemini integration** for deepfake detection analysis
-- **Multi-modal processing**: analyzes both video and facial landmarks
-- **Automatic Firebase persistence** of analysis results
-- **Base64 encoding** of video files for API transmission
+### The Four Laws of Kinetic Forensics
 
-## Quick Start
+Human movement is governed by biology that AI models struggle to perfectly replicate:
+
+**1. The Law of Inertia — Chin & Jaw Velocity Variance**
+```
+Human head movements have mass. Acceleration = Δv / Δt must follow physical limits.
+AI-generated faces exhibit "weightless" transitions — instantaneous position changes
+that violate Newton's second law. We measure:
+
+  jitter_ratio = std_dev(chin_velocity) / mean(chin_velocity)
+
+  Real human:  jitter_ratio > 0.15  (noisy, organic)
+  AI deepfake: jitter_ratio < 0.15  (suspiciously smooth)
+```
+
+**2. Saccadic Eye Movement — Main Sequence Violations**
+```
+Real human eyes move in discrete, high-velocity jumps (saccades), NOT linear slides.
+AI-generated irises interpolate linearly between positions.
+
+  We count saccade_peaks where |Δeye_position| > 0.005 per frame.
+  Genuine: multiple large discrete jumps
+  Synthetic: continuous linear motion (saccade_peaks < 2 over 30+ frames)
+```
+
+**3. Biological Noise — Micro-Tremor Presence (3–7 Hz)**
+```
+Real humans have involuntary micro-tremors from muscle activity.
+Perfect smoothness in landmark trajectories = synthetic interpolation.
+```
+
+**4. Temporal Continuity — Face Detection Rate**
+```
+Face-swap models often produce warping artifacts causing frame-level face-loss.
+Detection rate < 70% across frames flags synthetic boundary failures.
+```
+
+### Data Pipeline
+
+```
+Video File (MP4, MOV, WebM)
+      │
+      ▼  [OpenCV — frame-by-frame decode]
+BGR Frame Buffer
+      │
+      ▼  [cv2.cvtColor — BGR→RGB]
+RGB Image
+      │
+      ▼  [MediaPipe FaceLandmarker.detect_for_video()]
+478 3D Normalized Landmarks (x, y, z ∈ [0.0, 1.0])
+      │
+      ▼  [Landmark Selection — 5 key anatomical points]
+  • Chin        (index 152)
+  • Left Iris   (indices 468–472, averaged to center)
+  • Right Iris  (indices 473–477, averaged to center)
+  • Left Eyebrow  (index 70)
+  • Right Eyebrow (index 300)
+      │
+      ▼  [Optional EMA Smoothing — α configurable]
+      │
+      ▼  [Optional Velocity — Euclidean distance per frame]
+      │
+      ▼  [JSON Serialization]
+output_landmarks.json  →  Gemini AI Analysis / Physics Heuristic
+```
+
+---
+
+## ☁️ Production Cloud Deployment
+
+### Deploy Backend to Cloud Run
+
+```bash
+# Authenticate with GCP
+gcloud auth login
+gcloud config set project deepfake-detector-494710
+
+# Build and deploy (Docker auto-detected from Dockerfile)
+gcloud run deploy sensor-backend \
+  --source . \
+  --platform managed \
+  --region asia-southeast1 \
+  --allow-unauthenticated \
+  --set-env-vars GOOGLE_CLOUD_PROJECT_ID=deepfake-detector-494710
+
+# Configure CORS for Cloud Storage
+gsutil cors set cors.json gs://deepfake-detector-494710.firebasestorage.app
+```
+
+### Deploy Firebase Functions & Hosting
+
+```bash
+# Install Firebase CLI
+npm install -g firebase-tools
+firebase login
+
+# Deploy Cloud Functions (Gemini analysis trigger)
+firebase deploy --only functions
+
+# Deploy frontend to Firebase Hosting
+cd Frontend && npm run build && cd ..
+firebase deploy --only hosting
+```
+
+### Live Production URLs (when GCP billing active)
+- **Frontend**: `https://deepfake-detector-494710.web.app`
+- **Backend API**: `https://sensor-backend-521504670907.asia-southeast1.run.app`
+
+---
+
+## 💻 Run Locally (Zero Cost)
+
+You can run the complete deepfake detection system on your local machine in under 5 minutes with **no GCP billing, no Firebase project, no cloud setup required.**
 
 ### Prerequisites
 
-- Python 3.8 or higher
-- Google Cloud Project with Gemini API enabled
-- Firebase project with Firestore and Cloud Storage
-- `gcloud` CLI authenticated with `gcloud auth application-default login`
+- Python 3.8+
+- Node.js 18+ and npm
 
-### Setup (5 minutes)
+### Step 1 — Backend (FastAPI + MediaPipe)
 
 ```bash
-# 1. Navigate to sensor-module
-cd sensor-module
-
-# 2. Create and activate virtual environment
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-
-# 3. Install dependencies
-pip install -r requirements.txt
-
-# 4. Set Google Cloud Project ID
-export GOOGLE_CLOUD_PROJECT_ID="your-project-id"
-
-# 5. Test landmark extraction
-python sensor.py sample_video.mp4
-```
-
-## Installation
-
-### Full Setup
-
-```bash
-# Clone repository or navigate to sensor-module directory
+# Clone and enter project
+git clone https://github.com/RiteeshTM/sensor-module
 cd sensor-module
 
 # Create virtual environment
 python -m venv .venv
-
-# Activate virtual environment
-source .venv/bin/activate  # Linux/macOS
-# OR
-.venv\Scripts\activate      # Windows
+.venv\Scripts\activate        # Windows
+# source .venv/bin/activate   # macOS/Linux
 
 # Install dependencies
 pip install -r requirements.txt
-# OR with uv (faster):
-uv pip install -r requirements.txt
+
+# The face_landmarker.task model (30MB) is already included.
+# If missing, it auto-downloads on first run.
+
+# ─── OPTION A: Free Gemini AI via Google AI Studio ────────────────
+# Get a free API key at: https://aistudio.google.com/apikey
+$env:GEMINI_API_KEY="your-api-key-here"   # Windows PowerShell
+# export GEMINI_API_KEY="your-api-key-here"  # macOS/Linux
+
+# ─── OPTION B: No API key — runs physics heuristic engine ─────────
+# (No environment variables needed at all)
+
+# Start the server
+python server.py
+# → Server running at http://localhost:8080
+# → Visit http://localhost:8080 to see mode (Firebase/Gemini status)
 ```
 
-### Dependencies
-
-Core dependencies (see `requirements.txt`):
-
-- `mediapipe>=0.10.14` - Facial landmark detection
-- `opencv-python>=4.10.0.84` - Video processing
-- `numpy>=1.24.0` - Numerical computations
-- `google-genai` - Gemini AI integration
-- `firebase-admin>=6.5.0` - Firebase integration
-- `fastapi` - Web framework
-- `uvicorn` - ASGI server
-- `python-multipart` - File upload support
-
-## Usage
-
-### Sensor Module (CLI)
-
-The `sensor.py` script extracts facial landmarks from video files.
-
-#### Basic Usage
+### Step 2 — Frontend (React + Vite)
 
 ```bash
+# In a new terminal
+cd Frontend
+npm install
+npm run dev
+# → App running at http://localhost:5173
+```
+
+Open `http://localhost:5173`, upload any face video (< 60 seconds), and click **Analyze Video**.
+
+### How the Frontend Auto-Detects Local Mode
+
+The React app intelligently routes API calls:
+```javascript
+// Auto-detects localhost → routes to local backend
+// No config.js changes needed
+const BACKEND_URL = window.location.hostname === "localhost"
+  ? "http://localhost:8080"          // Local FastAPI server
+  : "https://sensor-backend-...run.app";  // Cloud Run (production)
+```
+
+The backend returns results **directly in the HTTP response** when running locally — no Firestore polling needed.
+
+### Verify Your Backend Mode
+
+```bash
+curl http://localhost:8080/
+# {
+#   "status": "running",
+#   "firebase": "unavailable (local mode)",
+#   "analysis_engine": "Google AI Studio (gemini-2.5-flash)",
+#   "version": "2.0.0"
+# }
+```
+
+---
+
+## 📡 API Reference
+
+### `GET /`
+Health check and mode status.
+
+**Response:**
+```json
+{
+  "status": "running",
+  "firebase": "connected | unavailable (local mode)",
+  "analysis_engine": "Google AI Studio (gemini-2.5-flash) | Vertex AI (gemini-3.1-pro) | Local Heuristic Mock",
+  "version": "2.0.0"
+}
+```
+
+### `POST /analyze`
+Upload a video for deepfake analysis. Supports both Cloud and Local modes transparently.
+
+**Request:**
+```bash
+curl -X POST http://localhost:8080/analyze \
+  -F "video=@your_video.mp4"
+```
+
+**Response (Local Mode — immediate):**
+```json
+{
+  "message": "Analysis completed successfully",
+  "videoUri": null,
+  "result": {
+    "probability": 23.5,
+    "confidence": 76.5,
+    "framesAnalyzed": 412,
+    "status": "Real",
+    "report": "Physics-based kinetic forensics analysis of 412 frames..."
+  }
+}
+```
+
+**Response (Cloud Mode — triggers async pipeline):**
+```json
+{
+  "message": "Analysis completed successfully",
+  "videoUri": "gs://deepfake-detector-494710.firebasestorage.app/analyzed_videos/backend_20250428_142530.mp4",
+  "result": { ... }
+}
+```
+
+---
+
+## 🗂️ Project Structure
+
+```
+sensor-module/
+│
+├── 📄 sensor.py               Core MediaPipe landmark extraction engine
+│                              CLI + importable module
+│
+├── 📄 server.py               FastAPI REST API server
+│                              Handles video upload, orchestrates pipeline,
+│                              returns results directly or via Firebase
+│
+├── 📄 deepfake_detection.py   AI analysis engine (3-tier fallback)
+│                              1. Google AI Studio (GEMINI_API_KEY)
+│                              2. Vertex AI (GCP credentials)
+│                              3. Physics heuristic (no API needed)
+│
+├── 📄 firebase_utils.py       Firebase Admin SDK wrapper
+│                              Graceful fallback if credentials absent
+│
+├── 📄 main.py                 CLI end-to-end workflow script
+│
+├── 📄 Dockerfile              Cloud Run container definition
+│
+├── 📁 Frontend/               React + Vite web application
+│   ├── src/App.jsx            Main app (upload, analysis, results UI)
+│   ├── src/components/        Typewriter effect component
+│   ├── src/index.css          Dark glassmorphism design system
+│   └── public/config.js       Runtime backend URL override
+│
+├── 📁 functions/              Firebase Cloud Functions (Node.js)
+│   └── index.js               onObjectFinalized → Gemini analysis trigger
+│
+├── 📄 firebase.json           Firebase project config (Hosting + Functions)
+├── 📄 storage.rules           Firebase Storage security rules
+├── 📄 cors.json               GCS CORS config for browser uploads
+├── 📄 pyproject.toml          Python project metadata (uv compatible)
+└── 📄 requirements.txt        Python dependencies
+```
+
+---
+
+## 🧪 Sensor Module CLI Usage
+
+The `sensor.py` module works as a standalone CLI tool for landmark extraction, independent of the web stack:
+
+```bash
+# Basic extraction
 python sensor.py input.mp4
+
+# With all options
+python sensor.py input.mp4 \
+  --output landmarks.json \
+  --smoothing-alpha 0.7 \
+  --include-velocity \
+  --verbose
+
+# Batch processing
+Get-ChildItem *.mp4 | ForEach-Object { python sensor.py $_.Name }
 ```
 
-**Output**: `input_landmarks.json`
-
-#### With Custom Output Path
-
-```bash
-python sensor.py input.mp4 --output output.json
-```
-
-#### Verbose Mode (Debug Info)
-
-```bash
-python sensor.py input.mp4 --verbose
-```
-
-Prints:
-
-- Video FPS and total frame count
-- Processing progress (every 50 frames)
-- Final face detection statistics
-
-#### With Smoothing (Reduce Jitter)
-
-```bash
-python sensor.py input.mp4 --smoothing-alpha 0.8
-```
-
-**Alpha values**:
-
-- `0.0` - No smoothing (raw landmarks, most responsive)
-- `0.3-0.5` - Light smoothing (recommended for real-time)
-- `0.8` - Default, strong smoothing
-- `0.95+` - Very smooth, noticeable lag
-
-#### With Velocity Computation
-
-```bash
-python sensor.py input.mp4 --include-velocity
-```
-
-Adds `chin_velocity` field (pixels per frame) to output.
-
-#### Custom Model Path
-
-```bash
-python sensor.py input.mp4 --model /path/to/face_landmarker.task
-```
-
-#### Combined Example
-
-```bash
-python sensor.py input.mp4 --output landmarks.json --smoothing-alpha 0.7 --include-velocity --verbose
-```
-
-#### Using with uv (Faster Package Manager)
-
-```bash
-uv run python sensor.py input.mp4 --verbose
-```
-
-### API Server
-
-Start the FastAPI backend server for video upload and analysis.
-
-#### Basic Start
-
-```bash
-python server.py
-```
-
-Server runs on: `http://localhost:8000`
-
-#### With Environment Variables
-
-```bash
-export GOOGLE_CLOUD_PROJECT_ID="your-project-id"
-python server.py
-```
-
-#### With Custom Port
-
-```bash
-uvicorn server:app --port 8080
-```
-
-#### Development Mode (Auto-reload)
-
-```bash
-uvicorn server:app --reload
-```
-
-### End-to-End Analysis
-
-The `main.py` script demonstrates the complete workflow: video upload → landmark extraction → Gemini analysis → Firebase storage.
-
-#### Basic Usage
-
-```bash
-python main.py
-```
-
-This example:
-
-1. Uploads video to Firebase Cloud Storage
-2. Extracts facial landmarks using the sensor module
-3. Analyzes deepfake probability with Gemini AI
-4. Saves results to Firestore
-
-#### Customization
-
-Edit `main.py` to specify:
-
-- Video path: `video_path = "your_video.mp4"`
-- Landmarks file: `landmarks_path = "landmarks.json"`
-- Project ID: `GOOGLE_CLOUD_PROJECT_ID` environment variable
-
-## API Documentation
-
-### POST /analyze
-
-Uploads a video for facial landmark extraction and analysis.
-
-**Request**:
-
-```bash
-curl -X POST "http://localhost:8000/analyze" \
-  -F "video=@input.mp4"
-```
-
-**Request Parameters**:
-
-- `video` (file, required): MP4 video file
-
-**Response** (200 OK):
-
-```json
-{
-  "message": "Files uploaded and analysis triggered successfully",
-  "videoUri": "gs://deepfake-detector-494710.firebasestorage.app/analyzed_videos/backend_20250428_142530.mp4"
-}
-```
-
-**Response** (500 Error):
-
-```json
-{
-  "error": "Detailed error message"
-}
-```
-
-**Workflow**:
-
-1. Video saved temporarily
-2. Landmarks extracted via `sensor.process_video()`
-3. Video uploaded to Firebase Storage (`analyzed_videos/backend_<timestamp>.mp4`)
-4. Landmarks JSON uploaded to Firebase Storage (`analyzed_videos/backend_<timestamp>_landmarks.json`)
-5. Temporary files cleaned up
-6. Returns Firebase Storage URIs for frontend
-
-## Output Format
-
-### Landmark Extraction JSON
-
+**Output Format (per frame):**
 ```json
 [
   {
     "frame": 0,
     "time": 0.0,
     "face_detected": true,
-    "chin": [0.5, 0.6, -0.02],
-    "left_eye": [0.35, 0.4, -0.01],
-    "right_eye": [0.65, 0.4, -0.01],
-    "left_eyebrow": [0.3, 0.25, 0.0],
-    "right_eyebrow": [0.7, 0.25, 0.0]
-  },
-  {
-    "frame": 1,
-    "time": 0.033,
-    "face_detected": true,
-    "chin": [0.501, 0.602, -0.019],
-    "left_eye": [0.351, 0.401, -0.009],
-    "right_eye": [0.651, 0.401, -0.009],
-    "left_eyebrow": [0.301, 0.251, 0.001],
-    "right_eyebrow": [0.701, 0.251, 0.001]
-  },
-  {
-    "frame": 2,
-    "time": 0.066,
-    "face_detected": false,
-    "chin": null,
-    "left_eye": null,
-    "right_eye": null,
-    "left_eyebrow": null,
-    "right_eyebrow": null
+    "chin":           [0.500, 0.642, -0.021],
+    "left_eye":       [0.349, 0.401,  0.001],
+    "right_eye":      [0.651, 0.401,  0.001],
+    "left_eyebrow":   [0.299, 0.252,  0.000],
+    "right_eyebrow":  [0.701, 0.252,  0.000],
+    "chin_velocity":  0.0043
   }
 ]
 ```
 
-### Fields
-
-| Field           | Type              | Description                                     |
-| --------------- | ----------------- | ----------------------------------------------- |
-| `frame`         | int               | 0-indexed frame number                          |
-| `time`          | float             | Timestamp in seconds (frame_id / fps)           |
-| `face_detected` | bool              | Whether a face was detected in this frame       |
-| `chin`          | [x, y, z] \| null | Normalized chin coordinates or null if no face  |
-| `left_eye`      | [x, y, z] \| null | Left iris center (averaged from 5 iris points)  |
-| `right_eye`     | [x, y, z] \| null | Right iris center (averaged from 5 iris points) |
-| `left_eyebrow`  | [x, y, z] \| null | Left eyebrow corner                             |
-| `right_eyebrow` | [x, y, z] \| null | Right eyebrow corner                            |
-| `chin_velocity` | float \| null     | (Optional) Chin movement speed in units/second  |
-
-### Coordinate System
-
-All coordinates are **normalized** (0.0–1.0):
-
-- `x`: left (0.0) to right (1.0)
-- `y`: top (0.0) to bottom (1.0)
-- `z`: depth estimate from the model (-1.0 to +1.0), where negative = farther from camera
-
-## Landmark Indices
-
-The script extracts the following MediaPipe Face Mesh indices:
-
-| Landmark      | Index(es)                          |
-| ------------- | ---------------------------------- |
-| Chin          | 152                                |
-| Left Iris     | 468, 469, 470, 471, 472 (averaged) |
-| Right Iris    | 473, 474, 475, 476, 477 (averaged) |
-| Left Eyebrow  | 70                                 |
-| Right Eyebrow | 300                                |
-
-## Configuration Options
-
-```
-usage: sensor.py [-h] [--model MODEL] [--output OUTPUT]
-                  [--include-velocity] [--smoothing-alpha ALPHA] [--verbose]
-                  [input_video]
-
-positional arguments:
-  input_video              Path to input video (default: input.mp4)
-
-optional arguments:
-  -h, --help               Show help message
-  --model MODEL            Path to Face Landmarker model (.task file)
-                          Auto-downloads if missing
-  --output OUTPUT          Path to output JSON file
-                          (default: <input_stem>_landmarks.json)
-  --include-velocity       Add chin_velocity to each record
-  --smoothing-alpha ALPHA  EMA smoothing factor [0.0-1.0]
-                          (default: 0.8)
-  --verbose                Print debug information
-```
-
-## Performance
-
-- **Speed**: ~30-50 fps on modern CPU (M1/M2 MacBook, Intel i7+)
-- **Memory**: ~200-300 MB for typical video processing
-- **Model size**: ~30 MB (downloaded once)
-
-## Troubleshooting
-
-### Model Download Fails
-
-If the automatic model download fails due to network issues:
-
-1. Download manually:
-
-   ```bash
-   wget -O face_landmarker.task https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task
-   ```
-
-2. Place in the same directory as `sensor.py`
-
-3. Run: `python sensor.py input.mp4`
-
-### No Faces Detected
-
-- Ensure faces are clearly visible in the video
-- Check video resolution (recommended: 640x480 or higher)
-- Verify frame rate is reasonable (24+ fps)
-
-### Out of Memory
-
-- Process shorter video clips separately
-- Reduce video resolution before processing
-
-## Advanced Usage
-
-### Processing Multiple Videos
-
-```bash
-for video in *.mp4; do
-  python sensor.py "$video" --verbose
-done
-```
-
-### Post-Processing in Python
-
-```python
-import json
-
-with open("input_landmarks.json") as f:
-    records = json.load(f)
-
-# Filter only detected frames
-detected = [r for r in records if r["face_detected"]]
-
-# Calculate average chin position
-chins = [r["chin"] for r in detected]
-avg_chin = [sum(c[i] for c in chins) / len(chins) for i in range(3)]
-
-print(f"Detected {len(detected)}/{len(records)} frames")
-print(f"Average chin: {avg_chin}")
-```
-
-## Architecture
-
-The script follows a modular, production-grade design:
-
-1. **Argument parsing** (`parse_args()`) - CLI interface
-2. **Model management** (`ensure_model_file()`) - Auto-download if needed
-3. **Initialization** (`create_face_landmarker()`) - MediaPipe setup
-4. **Landmark extraction** (`extract_selected_landmarks()`) - Point selection
-5. **Processing pipeline** (`process_video()`) - Main loop
-6. **Data transformations** - Smoothing, velocity computation
-7. **JSON export** - Structured output
-
-## Engineering Notes
-
-### Why Temporal Continuity?
-
-Skipping frames without faces breaks time-series analysis. By recording `face_detected=false`, downstream models can:
-
-- Interpolate missing landmarks
-- Detect blink events (rapid face loss)
-- Maintain frame-to-frame correspondence
-
-### Why Iris Averaging?
-
-MediaPipe outputs 5 iris points (perimeter). Averaging them:
-
-- Reduces noise from individual point jitter
-- Gives a stable pupil center
-- Works better for velocity analysis
-
-### Why EMA Smoothing?
-
-MediaPipe's predictions have inherent jitter. EMA filter:
-
-- Reduces high-frequency noise
-- Preserves real motion
-- Is computationally cheap
-- Can be toggled off if raw data is needed
-
-### Why Optional Velocity?
-
-Not all use cases need velocity. Optional flag keeps the default output schema clean while supporting extended features.
-
-## Deepfake Detection with Gemini
-
-Once you've extracted landmarks, analyze them for deepfake indicators using the `deepfake_detection.py` module.
-
-### Setup
-
-Set the Google Cloud project ID:
-
-```bash
-export GOOGLE_CLOUD_PROJECT_ID="your-project-id"
-```
-
-### Basic Usage
-
-```bash
-python deepfake_detection.py video.mp4 landmarks.json
-```
-
-### Output
-
-Returns JSON with:
-
-- `authenticity_score` (0-100): Confidence the video is genuine
-- `flagged_anomalies`: Timestamps and reasons for suspicion
-- `forensic_explanation`: Technical summary of findings
-
-### Analysis Focus
-
-The detector checks for:
-
-- **Snap-to-grid effect**: Unnatural smoothness in chin acceleration
-- **Saccadic violations**: Linear eye movements instead of discrete jumps
-- **Biological noise loss**: Absence of micro-tremors (3-7 Hz)
-- **Temporal lag**: Desync between mouth and eye movements (>50ms)
-
-## Configuration
-
-### Environment Variables
-
-| Variable                  | Description                          | Default                    |
-| ------------------------- | ------------------------------------ | -------------------------- |
-| `GOOGLE_CLOUD_PROJECT_ID` | GCP project ID for Gemini & Firebase | `deepfake-detector-494710` |
-
-### Firebase Configuration
-
-Firebase configuration is stored in `firebase.json` and `cors.json`.
-
-**Firebase Initialization** (automatic in Python):
-
-```python
-from firebase_utils import initialize_firebase
-initialize_firebase("your-project-id")
-```
-
-Requires `gcloud auth application-default login` to be run first.
-
-### Custom Model Path
-
-Edit `sensor.py` to use a different MediaPipe model:
-
-```python
-MODEL_DOWNLOAD_URL = "https://your-url/model.task"
-```
-
-## Architecture Deep Dive
-
-### Data Flow Diagram
-
-```
-Video File (MP4, MOV, WebM)
-    ↓ [OpenCV]
-BGR Frame Buffer
-    ↓ [RGB Conversion]
-RGB Image
-    ↓ [MediaPipe Landmarker]
-478 Facial Landmarks + Confidence Scores
-    ↓ [Landmark Selection]
-5 Key Points (chin, 2 eyes, 2 eyebrows)
-    ↓ [Iris Averaging]
-4 Key Points + averaged pupil centers
-    ↓ [Optional EMA Smoothing]
-Smoothed Landmarks
-    ↓ [Optional Velocity]
-Final Record with velocity data
-    ↓ [JSON Serialization]
-output_landmarks.json
-    ↓ [Firebase Upload]
-Cloud Storage (gs://bucket/analyzed_videos/)
-    ↓ [Gemini Analysis]
-Deepfake Detection Results
-    ↓ [Firestore Storage]
-Analysis saved in Firestore Database
-```
-
-### Component Responsibilities
-
-| Component     | File                    | Purpose                        |
-| ------------- | ----------------------- | ------------------------------ |
-| **Sensor**    | `sensor.py`             | Video → Landmarks extraction   |
-| **Server**    | `server.py`             | HTTP API, file upload handling |
-| **Detection** | `deepfake_detection.py` | Gemini AI analysis integration |
-| **Firebase**  | `firebase_utils.py`     | Cloud Storage & Firestore      |
-| **Main**      | `main.py`               | End-to-end workflow example    |
-
-### Deployment Architecture
-
-```
-┌─────────────────┐
-│  Frontend App   │ (Firebase Hosting, index.html)
-└────────┬────────┘
-         │ HTTPS
-         ↓
-┌─────────────────────────────────────┐
-│  FastAPI Backend (server.py)        │ (localhost:8000 or Cloud Run)
-│  - Video Upload Endpoint            │
-│  - CORS Middleware                  │
-└────┬─────────┬──────────────────────┘
-     │         │
-     ↓         ↓
-┌───────────────────────────┐
-│  Sensor Module            │
-│  - Landmark Extraction    │
-│  - sensor.py              │
-└────┬────────────────────┘
-     │
-     ↓
-┌──────────────────────────────┐
-│  Firebase Integration        │
-│  - Cloud Storage Upload      │
-│  - Firestore Results Storage │
-└──────────┬───────────────────┘
-           │
-           ↓
-┌──────────────────────────────┐
-│  Google Gemini AI            │
-│  - Deepfake Analysis         │
-│  - Forensic Checks           │
-└──────────────────────────────┘
-```
-
-## 📈 Performance Metrics
-
-Tested on various hardware:
-
-| Hardware      | FPS       | Memory | Notes                    |
-| ------------- | --------- | ------ | ------------------------ |
-| M1 MacBook    | 45-50 fps | 250 MB | Excellent performance    |
-| Intel i7-10th | 30-35 fps | 300 MB | Good, stable             |
-| Intel i5-8th  | 15-20 fps | 350 MB | Acceptable for offline   |
-| Google Colab  | 25-30 fps | 400 MB | Adequate for development |
-
-## 🚀 Deployment
-
-### Local Development
-
-```bash
-# Terminal 1: Start FastAPI server
-python server.py
-
-# Terminal 2: Upload a test video
-curl -F "video=@test.mp4" http://localhost:8000/analyze
-```
-
-### Google Cloud Run
-
-```bash
-# Build and deploy to Cloud Run
-gcloud run deploy sensor-module \
-  --source . \
-  --platform managed \
-  --region us-central1 \
-  --set-env-vars GOOGLE_CLOUD_PROJECT_ID=your-project-id
-```
-
-### Docker Deployment
-
-```dockerfile
-FROM python:3.11-slim
-
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-
-COPY . .
-EXPOSE 8000
-
-CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000"]
-```
-
-Build and run:
-
-```bash
-docker build -t sensor-module .
-docker run -p 8000:8000 -e GOOGLE_CLOUD_PROJECT_ID=your-id sensor-module
-```
-
-## Security Considerations
-
-### Firebase Storage Rules
-
-Rules defined in `storage.rules`:
-
-- Authenticated users can upload to `analyzed_videos/`
-- Only authorized services can read/write
-- Enforce file type validation
-
-### Firestore Security Rules
-
-- Documents only writable by backend service account
-- Frontend read access to user's own analysis results
-- No direct API key exposure in frontend
-
-### Best Practices
-
-1. **Environment Variables**: Never commit `.env` files with credentials
-2. **Service Account**: Use service account for backend, not user credentials
-3. **CORS**: Configure strict origins for production
-4. **Rate Limiting**: Add rate limits to `/analyze` endpoint for production
-
-## Testing
-
-### Unit Tests
-
-```bash
-# Test landmark extraction on sample video
-python -m pytest tests/test_sensor.py -v
-```
-
-### Integration Tests
-
-```bash
-# Test full pipeline with Firebase
-python -m pytest tests/test_integration.py -v
-```
-
-### Manual Testing
-
-```bash
-# Test with sample video
-python sensor.py tests/fixtures/sample_video.mp4 --verbose
-
-# Test API endpoint
-curl -F "video=@tests/fixtures/sample_video.mp4" \
-  http://localhost:8000/analyze
-```
-
-## Documentation
-
-- [ARCHITECTURE.md](ARCHITECTURE.md) - Detailed technical design
-- [Inline code comments](sensor.py) - Implementation details
-- [MediaPipe Docs](https://ai.google.dev/edge/mediapipe) - Official reference
-
-## FAQ
-
-**Q: Why does processing take so long?**
-A: First run downloads the 30MB model. Subsequent runs are faster. Optimize video resolution for speed.
-
-**Q: Can I use this for live video streams?**
-A: Yes, modify `sensor.py` to accept RTSP/RTMP streams. Current implementation processes files.
-
-**Q: What video formats are supported?**
-A: Any format supported by OpenCV (MP4, MOV, AVI, WebM, etc.). MP4 is recommended.
-
-**Q: How accurate is the landmark detection?**
-A: MediaPipe achieves ~95% accuracy on frontal faces. Accuracy drops for extreme angles or occlusions.
-
-**Q: Can I use a different AI model instead of Gemini?**
-A: Yes, edit `deepfake_detection.py` to use Claude, GPT-4, or other models.
-
-**Q: Is this suitable for production use?**
-A: Yes, the code is tested and handles errors gracefully. Follow security best practices before deployment.
-
-## 📄 License
-
-MIT License - See LICENSE file for details
-
-## Related Resources
-
-- [MediaPipe Face Landmarker](https://ai.google.dev/edge/mediapipe/solutions/vision/face_landmarker)
-- [Face Mesh Documentation](https://google.github.io/mediapipe/solutions/face_mesh)
-- [478-Point Face Landmark Map](https://storage.googleapis.com/mediapipe-assets/documentation/mediapipe_face_landmark_fullsize.png)
-- [FastAPI Documentation](https://fastapi.tiangolo.com/)
-- [Firebase Documentation](https://firebase.google.com/docs)
-- [Google Gemini API](https://ai.google.dev/gemini-api)
+All coordinates are normalized `[0.0, 1.0]`. `z` is a depth estimate (negative = closer to camera).
 
 ---
 
-**Last Updated**: April 2026
-**Status**: Active Development
-**Maintained By**: DeepFake Detector Team
+## ⚙️ Configuration
+
+### Environment Variables
+
+| Variable | Required | Description | Default |
+|---|---|---|---|
+| `GEMINI_API_KEY` | No | Google AI Studio key (free) — enables Gemini 2.5 Flash without GCP billing | *not set → physics mode* |
+| `GOOGLE_CLOUD_PROJECT_ID` | No | GCP project ID for Vertex AI and Firebase | `deepfake-detector-494710` |
+
+### Sensor CLI Options
+
+| Flag | Default | Description |
+|---|---|---|
+| `--model` | `face_landmarker.task` | Path to MediaPipe model file |
+| `--output` | `<input>_landmarks.json` | Output JSON path |
+| `--smoothing-alpha` | `0.8` | EMA filter strength `[0.0–1.0]`. `0` = raw, `0.95` = very smooth |
+| `--include-velocity` | off | Append `chin_velocity` field (units/second) |
+| `--verbose` | off | Print FPS, frame count, detection stats |
+
+---
+
+## 🛠️ Technical Stack
+
+| Layer | Technology | Purpose |
+|---|---|---|
+| **Frontend** | React 18 + Vite | SPA with drag-and-drop video upload |
+| **Animations** | Framer Motion | Smooth result reveals, scanning line |
+| **Icons** | Lucide React | Shield, Alert, CheckCircle icons |
+| **Backend** | FastAPI + Uvicorn | Async REST API, multipart video upload |
+| **CV Engine** | MediaPipe Face Landmarker | 478-point 3D facial landmark extraction |
+| **Video Decode** | OpenCV (headless) | Frame-by-frame BGR→RGB pipeline |
+| **AI Analysis** | Google Gemini (multi-modal) | Video + landmark reasoning (Vertex AI / AI Studio) |
+| **Hosting** | Firebase Hosting | CDN-backed static frontend |
+| **Compute** | Google Cloud Run | Serverless, auto-scaling containerized backend |
+| **Functions** | Firebase Cloud Functions v2 | Event-driven Gemini trigger |
+| **Database** | Cloud Firestore | Real-time NoSQL results storage |
+| **Storage** | Firebase Cloud Storage | Video and landmark file persistence |
+| **Containers** | Docker | Cloud Run deployment packaging |
+| **Auth** | GCP Application Default Credentials | Secure service-to-service auth |
+
+---
+
+## 📊 Performance
+
+| Hardware | Landmark Extraction FPS | Memory Usage |
+|---|---|---|
+| M1/M2 MacBook | 45–50 fps | ~250 MB |
+| Intel i7 (10th gen) | 30–35 fps | ~300 MB |
+| Intel i5 (8th gen) | 15–20 fps | ~350 MB |
+| Google Colab (CPU) | 25–30 fps | ~400 MB |
+
+**Model sizes:**
+- `face_landmarker.task`: ~30 MB (MediaPipe, Float16, included in repo)
+- Docker image: ~2.1 GB (Python + OpenCV + MediaPipe layers)
+
+---
+
+## 🔧 Troubleshooting
+
+### Backend won't start
+```bash
+# Ensure dependencies are installed
+pip install -r requirements.txt
+
+# Check face_landmarker.task exists
+ls face_landmarker.task
+
+# If missing, download manually:
+curl -o face_landmarker.task https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task
+```
+
+### CORS errors in browser
+The FastAPI CORS middleware allows `localhost:5173` by default. If you're running the frontend on a different port, add it to the `allow_origins` list in `server.py`.
+
+### Firebase init warning on startup
+```
+Warning: Firebase initialization failed: ...
+The application will run in local/standalone mode
+```
+This is **expected and intentional** when running without GCP credentials. The system will still function fully using the physics engine or Google AI Studio.
+
+### No faces detected
+- Ensure faces are clearly visible and frontal
+- Recommended resolution: 640×480 or higher
+- Recommended frame rate: 24+ fps
+
+---
+
+## 🏛️ Design Decisions
+
+### Why MediaPipe Face Landmarker (not Face Mesh)?
+| Aspect | Face Landmarker | Face Mesh (deprecated) |
+|---|---|---|
+| API Type | Tasks API (2024+) | Solutions API (legacy) |
+| Built-in tracking | ✅ | ❌ Manual |
+| Performance | Better | Slower |
+| Maintenance | Active | Deprecated |
+
+### Why Iris Averaging?
+MediaPipe outputs 5 perimeter points per iris. Averaging gives a **stable pupil center** with reduced jitter — essential for velocity analysis:
+```
+Raw iris points: [0.348, 0.402, 0.001], [0.349, 0.401, 0.003], ... (high variance)
+Averaged center: [0.350, 0.401, 0.001]  (stable)
+```
+
+### Why Optional EMA Smoothing?
+Raw MediaPipe output has inherent ±2–3 pixel jitter. EMA with `α=0.8` preserves real motion while suppressing measurement noise. Making it optional preserves the raw data for research pipelines.
+
+### Why Preserve All Frames (Including Misses)?
+Skipping frames without detected faces breaks time-series alignment. By recording `face_detected: false` with `null` landmark values, downstream models can interpolate, detect blink events, and maintain frame-accurate correspondence.
+
+---
+
+## 📄 License
+
+MIT License — see [LICENSE](LICENSE) for details.
+
+---
+
+<div align="center">
+
+Built for the **Google AI Challenge** · Powered by **Google Gemini** · Deployed on **Google Cloud**
+
+*"In a world where pixels lie, physics cannot."*
+
+</div>

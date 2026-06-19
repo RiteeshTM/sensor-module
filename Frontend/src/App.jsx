@@ -17,7 +17,9 @@ const firebaseConfig = {
 
 const BACKEND_URL =
   (typeof window !== "undefined" && window.__APP_CONFIG__?.BACKEND_URL) ||
-  "https://sensor-backend-521504670907.asia-southeast1.run.app";
+  (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
+    ? "http://localhost:8080"
+    : "https://sensor-backend-521504670907.asia-southeast1.run.app");
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
@@ -185,7 +187,7 @@ function App() {
   const runAnalysis = async () => {
     if (!videoFile) return;
     setIsAnalyzing(true);
-    setAnalysisStatus("Uploading video to secure server...");
+    setAnalysisStatus("Uploading video and extracting landmarks...");
     setResult(null);
 
     try {
@@ -204,8 +206,16 @@ function App() {
       }
 
       const data = await response.json();
-      const expectedVideoUri = data.videoUri;
+      
+      // If the backend returns the result directly (Local/Direct mode)
+      if (data.result) {
+        setResult(data.result);
+        setIsAnalyzing(false);
+        setAnalysisStatus("");
+        return;
+      }
 
+      const expectedVideoUri = data.videoUri;
       setAnalysisStatus("Generating facial landmarks (MediaPipe)...");
       await pollForAnalysis(expectedVideoUri);
     } catch (error) {

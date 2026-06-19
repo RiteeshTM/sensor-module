@@ -3,23 +3,35 @@ from firebase_admin import credentials, storage, firestore
 import os
 from datetime import datetime
 
+firebase_available = False
+
 def initialize_firebase(project_id: str):
     """
     Initializes Firebase Admin SDK using Application Default Credentials.
     """
+    global firebase_available
     if not firebase_admin._apps:
-        # Since gcloud auth application-default login is run, 
-        # we can use the default credentials.
-        cred = credentials.ApplicationDefault()
-        
-        # Specific bucket for this project
-        bucket_name = "deepfake-detector-494710.firebasestorage.app"
-        
-        firebase_admin.initialize_app(cred, {
-            'projectId': project_id,
-            'storageBucket': bucket_name
-        })
-        print(f"Firebase initialized for project: {project_id}")
+        try:
+            # Try using Application Default Credentials
+            cred = credentials.ApplicationDefault()
+            
+            # Specific bucket for this project
+            bucket_name = "deepfake-detector-494710.firebasestorage.app"
+            
+            firebase_admin.initialize_app(cred, {
+                'projectId': project_id,
+                'storageBucket': bucket_name
+            })
+            firebase_available = True
+            print(f"Firebase initialized for project: {project_id}")
+        except Exception as e:
+            firebase_available = False
+            print(f"Warning: Firebase initialization failed: {e}")
+            print("The application will run in local/standalone mode without Firebase cloud storage or database.")
+
+def is_firebase_available() -> bool:
+    global firebase_available
+    return firebase_available and len(firebase_admin._apps) > 0
 
 def upload_file_to_storage(file_path: str, bucket_folder: str = "analyzed_videos", is_video: bool = True, timestamp: str = None) -> str:
     """
@@ -34,6 +46,9 @@ def upload_file_to_storage(file_path: str, bucket_folder: str = "analyzed_videos
     Returns:
         The destination blob name of the uploaded file.
     """
+    if not is_firebase_available():
+        raise RuntimeError("Firebase is not initialized or unavailable.")
+
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"File not found: {file_path}")
 
@@ -73,6 +88,9 @@ def save_analysis_to_firestore(video_storage_path: str, analysis_result_text: st
     Returns:
         The Document ID of the newly created Firestore record.
     """
+    if not is_firebase_available():
+        raise RuntimeError("Firebase is not initialized or unavailable.")
+
     print(f"Saving analysis results to Firestore...")
     
     # Initialize Firestore client

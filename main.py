@@ -23,25 +23,36 @@ def main():
     project_id = os.environ.get("GOOGLE_CLOUD_PROJECT_ID", "deepfake-detector-494710")
     
     try:
-        # Initialize Firebase and Upload Video to Cloud Storage Backend
+        # Initialize Firebase
         print(f"Connecting to Firebase backend for project: {project_id}")
         initialize_firebase(project_id)
         
-        # Perform Video Upload to Firebase Storage
-        storage_path = upload_file_to_storage(video_path, bucket_folder="analyzed_videos", is_video=True)
+        from firebase_utils import is_firebase_available
         
-        # After upload finishes, call Gemini to analyze the deepfake locally
-        print(f"Video backed up to Firebase at: {storage_path}")
+        storage_path = None
+        if is_firebase_available():
+            # Perform Video Upload to Firebase Storage
+            storage_path = upload_file_to_storage(video_path, bucket_folder="analyzed_videos", is_video=True)
+            print(f"Video backed up to Firebase at: {storage_path}")
+        else:
+            print("Firebase unavailable. Skipping cloud backup. Running analysis locally.")
+
         print("Starting deepfake analysis...")
         results = generate(video_path, landmarks_path)
         
-        # Save results to Firebase Firestore Database automatically
-        doc_id = save_analysis_to_firestore(storage_path, results)
+        if is_firebase_available() and storage_path:
+            # Save results to Firebase Firestore Database automatically
+            doc_id = save_analysis_to_firestore(storage_path, results)
         
         print("\n" + "="*50)
         print("ANALYSIS RESULTS")
         print("="*50)
-        print(json.dumps(results, indent=2))
+        # Parse if string
+        try:
+            parsed = json.loads(results)
+            print(json.dumps(parsed, indent=2))
+        except Exception:
+            print(results)
         
     except FileNotFoundError as e:
         print(f"Error: {e}")
