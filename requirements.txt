@@ -1,8 +1,12 @@
+# Runtime dependencies for the FastAPI backend and the sensor CLI.
 mediapipe>=0.10.14
 opencv-python-headless>=4.10.0.84
 numpy>=1.24.0
-google-genai
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.9
+
+# Optional: only needed for the Gemini tiers and Firebase persistence.
+# The app degrades to the local physics engine if these are absent.
+google-genai>=1.0.0
 firebase-admin>=6.5.0
-fastapi
-uvicorn
-python-multipart

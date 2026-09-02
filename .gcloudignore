@@ -1,25 +1,31 @@
+# Version control / caches
 .git
+.gitignore
 __pycache__
 *.pyc
 *.pyo
-.firebase
+.venv
+venv
+
+# Frontend and Firebase assets are not part of the backend image
+Frontend
 functions
-node_modules
 public
-download.mp4
-download_landmarks.json
-uv.lock
-pyproject.toml
-README.md
-ARCHITECTURE.md
-test_upload.py
-main.py
-deepfake_detection.py
-cors.json
-storage.rules
+.firebase
+node_modules
 firebase.json
 .firebaserc
+storage.rules
+cors.json
+
+# Docs and local scratch files
+README.md
+ARCHITECTURE.md
+LICENSE
+uv.lock
+pyproject.toml
 *.local
-
-.venv
-
+*.mp4
+*.mov
+*.webm
+*_landmarks.json
