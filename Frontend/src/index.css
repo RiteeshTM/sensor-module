@@ -21,6 +21,17 @@
 
 body {
   background-color: var(--bg-color);
+  background-image: 
+    /* Google Blue glow - top left */
+    radial-gradient(circle 600px at 15% 0%, rgba(66, 133, 244, 0.18), transparent 70%),
+    /* Google Red glow - top center-right */
+    radial-gradient(circle 500px at 50% 0%, rgba(234, 67, 53, 0.15), transparent 70%),
+    /* Google Yellow glow - top right */
+    radial-gradient(circle 500px at 85% 10%, rgba(251, 188, 5, 0.14), transparent 70%),
+    /* Google Green glow - upper mid section */
+    radial-gradient(circle 700px at 30% 30vh, rgba(52, 168, 83, 0.12), transparent 70%);
+  background-repeat: no-repeat;
+  background-size: 100% 100vh;
   color: var(--text-primary);
   font-family: var(--font-main);
   line-height: 1.6;
